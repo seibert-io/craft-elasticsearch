@@ -1,0 +1,41 @@
+{
+	"name": "seibert-io/craft-elasticsearch",
+	"description": "Elasticsearch integration for Craft CMS",
+	"version": "1.0.0",
+	"type": "craft-plugin",
+	"keywords": [
+	  "elasticsearch",
+	  "craft",
+	  "cms",
+	  "craftcms"
+	],
+	"authors": [
+	  {
+		"name": "seibert-io"
+	  }
+	],
+	"minimum-stability": "dev",
+	"require": {
+	  "craftcms/cms": "^3.0.0",
+	  "elasticsearch/elasticsearch": "^7.4",
+		"guzzlehttp/guzzle": "^6.0"
+	},
+	"autoload": {
+	  "psr-4": {
+		"seibertio\\elasticsearch\\": "src/"
+	  }
+	},
+	"extra": {
+	  "name": "Elasticsearch",
+	  "handle": "craft-elasticsearch",
+	  "class": "seibertio\\elasticsearch\\ElasticSearchPlugin",
+	  "components": {
+		"client": "seibertio\\elasticsearch\\services\\ClientService",
+		"index": "seibertio\\elasticsearch\\services\\ClienIndexServicetService",
+		"indexManagement": "seibertio\\elasticsearch\\services\\IndexManagementService",
+		"entries": "seibertio\\elasticsearch\\services\\EntryService",
+		"crawl": "seibertio\\elasticsearch\\services\\CrawlService",
+		"query": "seibertio\\elasticsearch\\services\\QueryService"
+	  }
+	}
+  }
