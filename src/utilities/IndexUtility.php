@@ -40,7 +40,7 @@ class IndexUtility extends Utility
      */
     public static function iconPath()
     {
-        return null;
+        return Craft::getAlias('@seibertio/elasticsearch/icon.svg');
     }
 
     /**
