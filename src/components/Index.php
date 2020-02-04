@@ -204,7 +204,6 @@ class Index extends Component
 				'type' => 'completion',
 				"analyzer" => "completion_analyzer",
 				"search_analyzer" => "standard",
-				"copy_to" => 'spellingSuggestions',
 			],
 			'spellingSuggestions' => [
 				'type' => 'text',

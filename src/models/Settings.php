@@ -54,7 +54,7 @@ class Settings extends Model
 
     public function getLanguageAnalyzer($siteHandle = null): string
     {
-        return ConfigHelper::localizedValue($this->languageAnalyzer, $siteHandle) ?? $this->getSiteLanguageAnalyzer($siteHandle);
+        return ConfigHelper::localizedValue($this->languageAnalyzer, $siteHandle) ?: $this->getSiteLanguageAnalyzer($siteHandle);
     }
 
     /**
