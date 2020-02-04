@@ -23,10 +23,14 @@ use seibertio\elasticsearch\events\DocumentEvent;
  * https://craftcms.com/docs/plugins/services
  */
 class IndexService extends Component
-{
-    public function indexEntry(Entry $entry): void
+{   
+    /**
+	 * @param Entry $entry
+	 * @param Index|null $index if not provided, the default index will be used
+	 */
+    public function indexEntry(Entry $entry, $index = null): void
     {
-        $document = new EntryDocument($entry);
+        $document = new EntryDocument($entry, $index);
         $this->indexDocument($document);
     }
 
@@ -58,9 +62,13 @@ class IndexService extends Component
         ElasticSearchPlugin::$plugin->client->get()->index($event->params);
     }
 
-    public function deleteEntry(Entry $entry): void
+    /**
+	 * @param Entry $entry
+	 * @param Index|null $index if not provided, the default index will be used
+	 */
+    public function deleteEntry(Entry $entry, $index = null): void
     {
-        $document = new EntryDocument($entry);
+        $document = new EntryDocument($entry, $index);
         $this->deleteDocument($document);
     }
 

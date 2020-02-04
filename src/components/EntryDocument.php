@@ -23,10 +23,14 @@ class EntryDocument extends Document
 {
 	public Entry $entry;
 
-    public function __construct(Entry $entry)
+	/**
+	 * @param Entry $entry
+	 * @param Index|null $index if not provided, the default index will be used
+	 */
+    public function __construct(Entry $entry, $index = null)
     {
 		$this->entry = $entry;
-        parent::__construct($entry->siteId . '-' . $entry->id, Index::getInstance($entry->site));
+        parent::__construct($entry->siteId . '-' . $entry->id, $index ?? Index::getInstance($entry->site));
 
         $this->on(DocumentEvent::EVENT_BEFORE_INDEX, [$this, 'onBeforeIndex']);
 	}
