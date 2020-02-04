@@ -31,9 +31,8 @@ class IndicesController extends BaseController
 
 		foreach($sites as $site) {
 			Craft::$app->queue->push(new ReIndexSiteJob(['siteId' => $site->id]));
-		}
+        }
 
-		//\Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
         return $this->redirect(UrlHelper::cpUrl('utilities/craft-elasticsearch'));
     }
 }
