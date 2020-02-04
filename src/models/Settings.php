@@ -57,6 +57,11 @@ class Settings extends Model
         return ConfigHelper::localizedValue($this->languageAnalyzer, $siteHandle) ?: $this->getSiteLanguageAnalyzer($siteHandle);
     }
 
+    public function getStopWordFilter($siteHandle = null): string
+    {
+        return ConfigHelper::localizedValue($this->languageAnalyzer, $siteHandle) ?: $this->getSiteLanguageStopwordFilter($siteHandle);
+    }
+
     /**
      * Get ElasticSearch analyzer for the current site language
      *
@@ -110,18 +115,72 @@ class Settings extends Model
             'zh' => 'cjk',
         ];
 
-        $analyzer = 'standard';
+        $localParts = explode('-', $siteLanguage);
+        $siteLanguagePart = $localParts[0];
+        
+        return $this->mapValue($languageToElasticSearchAnalyzerMap, $siteLanguage) ?? $this->mapValue($languageToElasticSearchAnalyzerMap, $siteLanguagePart) ?? 'standard';
+    }
 
-        if (array_key_exists($siteLanguage, $languageToElasticSearchAnalyzerMap)) {
-            $analyzer = $languageToElasticSearchAnalyzerMap[$siteLanguage];
-        } else {
-            $localParts = explode('-', $siteLanguage);
-            $siteLanguagePart = $localParts[0];
-            if (array_key_exists($siteLanguagePart, $languageToElasticSearchAnalyzerMap)) {
-                $analyzer = $languageToElasticSearchAnalyzerMap[$siteLanguagePart];
-            }
+    /**
+     * Get ElasticSearch stop words for the current site language
+     *
+     * @return string
+     */
+    private function getSiteLanguageStopwordFilter($siteHandle = null): string
+    {
+        if ($siteHandle === null) {
+            $siteHandle = Craft::$app->getSites()->getCurrentSite()->handle;
         }
 
-        return $analyzer;
+        $site = Craft::$app->sites->getSiteByHandle($siteHandle);
+        $siteLanguage = $site->language;
+
+        $languageToElasticStopwordFilterMap = [
+            'ar' => '_arabic_',
+            'bn' => '_bengali_',
+            'bg' => '_bulgarian_',
+            'ca' => '_catalan_',
+            'cs' => '_czech_',
+            'da' => '_danish_',
+            'de' => '_german_',
+            'en' => '_english_',
+            'el' => '_greek_',
+            'es' => '_spanish_',
+            'eu' => '_basque_',
+            'fa' => '_persian_',
+            'fi' => '_finnish_',
+            'fr' => '_french_',
+            'ga' => '_irish_',
+            'gl' => '_galician_',
+            'hi' => '_hindi_',
+            'hu' => '_hungarian_',
+            'hy' => '_armenian_',
+            'id' => '_indonesian_',
+            'it' => '_italian_',
+            'lv' => '_latvian_',
+            'nb' => '_norwegian_',
+            'nl' => '_dutch_',
+            'pt-BR' => '_brazilian_',
+            'pt' => '_portuguese_',
+            'ro' => '_romanian_',
+            'ru' => '_russian_',
+            'sv' => '_swedish_',
+            'tr' => '_turkish_',
+            'th' => '_thai_',
+        ];
+
+        $localParts = explode('-', $siteLanguage);
+        $siteLanguagePart = $localParts[0];
+        
+        return $this->mapValue($languageToElasticStopwordFilterMap, $siteLanguage) ?? $this->mapValue($languageToElasticStopwordFilterMap, $siteLanguagePart) ?? '_none_';
+    }
+
+    private function mapValue($mappingTable, $value)
+    {
+        if (array_key_exists($value, $mappingTable)) {
+            return $mappingTable[$value];
+        } 
+
+        return null;
     }
 }

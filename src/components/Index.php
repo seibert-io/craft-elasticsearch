@@ -99,9 +99,16 @@ class Index extends Component
 
 	public function initSettings(): void 
 	{
+		$stopwordList = ElasticSearchPlugin::$plugin->getSettings()->getStopWordFilter($this->site->handle);
+
 		$this->settings = [
 			'analysis' => [
 				"analyzer" => [
+					"language_stopwords" => [
+						'type' => 'custom',
+						'tokenizer' => 'standard',
+						'filter' => ['lowercase', 'language_stopwords']
+					],
 					"ngram_analyzer" => [
 						"tokenizer" => "ngram_tokenizer"
 					],
@@ -141,6 +148,10 @@ class Index extends Component
 						'type' => 'edge_ngram',
 						'min_gram' => 1,
 						'max_gram' => 24,
+					],
+					'language_stopwords' => [
+						'type' => 'stop',
+						'stopwords' => $stopwordList
 					]
 				]
 
@@ -181,7 +192,7 @@ class Index extends Component
 
 	public function initProperties(): void 
 	{
-		$analyzer = ElasticSearchPlugin::$plugin->getSettings()->getLanguageAnalyzer();
+		$analyzer = ElasticSearchPlugin::$plugin->getSettings()->getLanguageAnalyzer($this->site->handle);
 
 		$this->properties = [
 			'postDate'      => [
@@ -224,10 +235,15 @@ class Index extends Component
 					]
 				]
 			],
+			'unusualSuggestions' => [
+				'type' => 'text',
+				'analyzer' => 'language_stopwords',
+				'store' => true
+			],
 			'title' => [
 				'type' => 'text',
 				'analyzer' => $analyzer,
-				'copy_to' => 'spellingSuggestions',
+				'copy_to' => ['spellingSuggestions', 'unusualSuggestions'],
 				'store' => true,
 				//'index_phrases' => true,
 				'fields' => [
@@ -240,7 +256,7 @@ class Index extends Component
 			'description' => [
 				'type' => 'text',
 				'analyzer' => $analyzer,
-				'copy_to' => 'spellingSuggestions',
+				'copy_to' => ['spellingSuggestions', 'unusualSuggestions'],
 				'store' => true,
 				//'index_phrases' => true,
 				'fields' => [
@@ -265,7 +281,7 @@ class Index extends Component
 					'content' => [
 						'type' => 'text',
 						'analyzer' => $analyzer,
-						'copy_to' => 'spellingSuggestions',
+						'copy_to' => ['spellingSuggestions', 'unusualSuggestions'],
 						//'index_phrases' => true,
 						'fields' => [
 							"ngram" => [
@@ -375,7 +391,7 @@ class Index extends Component
 				'multi_match' => [
 					'query'    => $queryString,
 					'type' => 'cross_fields',
-					'minimum_should_match' => '50%',
+					'minimum_should_match' => '100%',
 					'fields'   => ['title^6', 'title.*^6', 'description^2', 'description.*^2', 'attachment.content', 'attachment.content.*'],
 				]
 			],
@@ -426,15 +442,16 @@ class Index extends Component
 					"aggregations" => [
 						"keywords" => [
 							"significant_text" => [
-								"field" => "spellingSuggestions",
+								"field" => "unusualSuggestions",
+								//"min_doc_count" => 3,
 								"filter_duplicate_text" => true,
+								"source_fields" => ["attachment.content" , "title", "description"]
 							] 
 						 ] 
 					  ] 
 				] 
 			 ] 
 		];
-		// TODO: test and process aggregation buckets
 	}
 
 	public function onBeforeIndexDocument(DocumentEvent $event): void 
@@ -515,30 +532,76 @@ class Index extends Component
 			return UrlHelper::urlWithParams(UrlHelper::baseSiteUrl() . 'search', array_merge($input, $params));
 		};
 
-		$phreaseSuggestions = array_map(fn($option) => ['text' => $option['text'], 'score' => $option['_score']], $response['suggest']['phrases'][0]['options']);
-		$spellingSuggestions = $response['suggest']['spelling'][0]['options'];
-		$significantTextSuggestions = array_map(fn($bucket) => ['text' => $bucket['key'], 'score' => $bucket['score']], $response['aggregations']['bucket_sample']['keywords']['buckets']);
+		$phraseSuggestions = array_map(fn($option) => ['text' => $option['text'], 'score' => $option['_score'], 'type' => 'phrase'], $response['suggest']['phrases'][0]['options']);
+		$spellingSuggestions = array_map(fn($suggestion) => ['text' => $suggestion['text'], 'score' => $suggestion['score'], 'type' => 'spelling'],$response['suggest']['spelling'][0]['options']);
+		$significantTextSuggestions = array_map(fn($bucket) => ['text' => $bucket['key'], 'score' => $bucket['score'], 'type' => 'significant'], $response['aggregations']['bucket_sample']['keywords']['buckets']);
 		
 		// filter text suggestions that are already part of the input query
 		$significantTextSuggestions = array_filter($significantTextSuggestions, fn($suggestion) => strpos($input['query'], $suggestion['text']) === false);
 		
+		// check if one of the significant suggestions allows autocompletion of the query
+		$hasCompletionSignificantTextSuggestion = false;
+		
+		$wordsInQuery = explode(' ', trim($input['query']));
+		$lastwordInQuery = $wordsInQuery[sizeof($wordsInQuery) - 1];
+
+		$filterForAutoCompletions = function($suggestion) use($lastwordInQuery) {
+			return strpos($suggestion['text'], $lastwordInQuery) === 0;
+		};
+
+		// filter significant and spelling suggestions for texts suitable for auto completion
+		$significantTextSuggestionAutoCompletions = array_filter($significantTextSuggestions, $filterForAutoCompletions);
+		$spellingSuggestionsAutoCompletions = array_filter($spellingSuggestions, $filterForAutoCompletions);
+
+		// if auto completions exist, use these instead of the whole set
+		if (sizeof($significantTextSuggestionAutoCompletions)  > 0) {
+			$significantTextSuggestions = $significantTextSuggestionAutoCompletions;
+		}
+		// if auto completions exist, use these instead of the whole set
+		if (sizeof($spellingSuggestionsAutoCompletions)  > 0) {
+			$spellingSuggestions = $spellingSuggestionsAutoCompletions;
+		}
+
+		// filter significant suggestions for texts suitable for auto completion
+		$significantTextSuggestionAutoCompletions = array_filter($significantTextSuggestions, $filterForAutoCompletions);
+
+		// if auto completions exist, use these instead of the whole set
+		if (sizeof($significantTextSuggestionAutoCompletions)  > 0) {
+			$significantTextSuggestions = $significantTextSuggestionAutoCompletions;
+		}
+
 		// build a complete query string suggestion by combining the query string and the suggestion
-		$mapSignificantTextSuggestions = function($suggestion)use ($input) {
+		$mapSignificantTextSuggestions = function($suggestion) use ($input) {
 			// if suggestion starts with query return the suggestion as-is
 			if (strpos($suggestion['text'], $input['query']) === 0) {
 				return $suggestion;
 			}
-
+			
 			// otherwise join query and suggestion to a new query string proposal
-			$suggestion['text'] = $input['query'] . ' ' . $suggestion['text'];
+			// if the last word in the query is the start of a suggestion, repace it with the suggestion
+			$wordsInQuery = explode(' ', trim($input['query']));
+			$lastwordInQuery = $wordsInQuery[sizeof($wordsInQuery) - 1];
+
+			if (strpos($suggestion['text'], $lastwordInQuery) === 0) {
+				$wordsInQuery[sizeof($wordsInQuery) - 1] = $suggestion['text'];
+			} else {
+				$wordsInQuery[] = $suggestion['text'];
+			}
+
+			$suggestion['text'] = join(' ', $wordsInQuery);
 
 			return $suggestion;
 		};
 
 		$significantTextSuggestions = array_map($mapSignificantTextSuggestions, $significantTextSuggestions);
 		
-		// build suggestion list by joining phrase suggetsions, significant text suggestions and spelling suggestions
-		$suggestions = array_merge($phreaseSuggestions, $significantTextSuggestions, $spellingSuggestions);
+		// build suggestion list by joining phrase suggetsions and significant text suggestions
+		$suggestions = array_merge($phraseSuggestions, $significantTextSuggestions);
+
+		// if no suggestions were found, add spelling suggestions
+		if (sizeof($suggestions) === 0) {
+			$suggestions = $spellingSuggestions;
+		}
 
 		$processedResponse = [
 			'links' => [
@@ -549,15 +612,27 @@ class Index extends Component
 			]
 		];
 
+
 		// sort suggestions by score descending
 		$suggestionSort = function($suggestionA, $suggestionB) use($input) {
 			$scoreA = round($suggestionA['score'] * 100000);
 			$scoreB = round($suggestionB['score'] * 100000);
 			
+			
 			// make sure prefix_matches are ranked first
 			if (strpos(strtolower($suggestionA['text']), strtolower($input['query'])) === 0) $scoreA += 100000;
 			if (strpos(strtolower($suggestionB['text']), strtolower($input['query'])) === 0) $scoreB += 100000;
+			
+			if ($scoreA === $scoreB) {
+				$numWordsA = sizeof(explode(' ', $suggestionA['text']));
+				$numWordsB = sizeof(explode(' ', $suggestionB['text']));
+				if ($numWordsA === $numWordsB) {
+					// sort alphabetically
+					return strcasecmp($suggestionA['text'], $suggestionB['text']);
+				}
 
+				return $numWordsA - $numWordsB;
+			}
 			// sort descending
 			return $scoreB - $scoreA;
 		};
