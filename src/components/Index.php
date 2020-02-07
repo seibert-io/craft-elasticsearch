@@ -74,8 +74,8 @@ class Index extends Component
 		$this->site = $site;
 		$this->setName('site-' . $this->site->id . '-default');
 		$this->type = 'entry';
-		$this->searchResponseProcessor = array($this, 'defaultSearchResponseProcessor');
-		$this->suggestResponseProcessor = array($this, 'defaultSuggestResponseProcessor');
+		$this->searchResponseProcessor = array(self::className(), 'defaultSearchResponseProcessor');
+		$this->suggestResponseProcessor = array(self::className(), 'defaultSuggestResponseProcessor');
 
 		$this->initSettings();
 		$this->initProperties();
@@ -528,7 +528,7 @@ class Index extends Component
         }
 	}
 
-	public function defaultSearchResponseProcessor($input, $params, $response): array 
+	public static function defaultSearchResponseProcessor($input, $params, $response): array 
 	{
 		$createUrl = function ($params = []) use ($input): string {
 			return UrlHelper::urlWithParams(UrlHelper::baseSiteUrl() . 'search', array_merge($input, $params));
@@ -585,7 +585,7 @@ class Index extends Component
 		return $processedResponse;
 	}
 
-	public function defaultSuggestResponseProcessor($input, $params, $response): array 
+	public static function defaultSuggestResponseProcessor($input, $params, $response): array 
 	{
 		$createUrl = function ($params = []) use ($input): string {
 			return UrlHelper::urlWithParams(UrlHelper::baseSiteUrl() . 'search', array_merge($input, $params));
