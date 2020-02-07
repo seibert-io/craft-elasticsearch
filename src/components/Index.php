@@ -110,7 +110,12 @@ class Index extends Component
 						'filter' => ['lowercase', 'language_stopwords']
 					],
 					"ngram_analyzer" => [
-						"tokenizer" => "ngram_tokenizer"
+						"tokenizer" => "ngram_tokenizer",
+						'filter' => ['lowercase']
+					],
+					"edgengram_analyzer" => [
+						"tokenizer" => "edge_ngram_tokenizer",
+						'filter' => ['lowercase']
 					],
 					'spelling_correction_ngram' => [
 						'tokenizer' => 'ngram_tokenizer',
@@ -135,6 +140,15 @@ class Index extends Component
 				'tokenizer' => [
 					'ngram_tokenizer' => [
 						"type" => "ngram",
+						"min_gram" => 3,
+						"max_gram" => 3,
+						"token_chars" => [
+							"letter",
+							"digit"
+						]
+					],
+					'edge_ngram_tokenizer' => [
+						"type" => "edge_ngram",
 						"min_gram" => 3,
 						"max_gram" => 3,
 						"token_chars" => [
@@ -250,6 +264,10 @@ class Index extends Component
 					"ngram" => [
 						'type' => 'text',
 						'analyzer' => 'ngram_analyzer',
+					],
+					"edge_ngram" => [
+						'type' => 'text',
+						'analyzer' => 'edgengram_analyzer',
 					]
 				]
 			],
@@ -263,6 +281,10 @@ class Index extends Component
 					"ngram" => [
 						'type' => 'text',
 						'analyzer' => 'ngram_analyzer',
+					],
+					"edge_ngram" => [
+						'type' => 'text',
+						'analyzer' => 'edgengram_analyzer',
 					]
 				]
 			],
@@ -287,6 +309,10 @@ class Index extends Component
 							"ngram" => [
 								'type' => 'text',
 								'analyzer' => 'ngram_analyzer',
+							],
+							"edge_ngram" => [
+								'type' => 'text',
+								'analyzer' => 'edgengram_analyzer',
 							]
 						]
 					],
@@ -336,7 +362,7 @@ class Index extends Component
 								'query'    => $queryString,
 								'type' => 'cross_fields',
 								'minimum_should_match' => '50%',
-								'fields'   => ['title^6', 'title.*^6', 'description^2', 'description.*^2', 'attachment.content', 'attachment.content.*'],
+								'fields'   => ['title^6', 'title.edge_ngram^6', 'description^2', 'description.edge_ngram^2', 'attachment.content', 'attachment.content.edge_ngram', 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'],
 							]
 						]
 					],
@@ -371,6 +397,20 @@ class Index extends Component
 
 							]
 						]
+					]
+				]
+			],
+			"highlight" => [
+				"fields" => [
+					"title.*" => [
+						"number_of_fragments" => 0,
+						"pre_tags" => ["<em>"], 
+						"post_tags" => ["</em>"]
+					],
+					"description.*" => [
+						"number_of_fragments" => 0,
+						"pre_tags" => ["<em>"], 
+						"post_tags" => ["</em>"]
 					]
 				]
 			]
@@ -496,6 +536,25 @@ class Index extends Component
 		
 		$totalHits = $response['hits']['total']['value'];
 		$numHitsInPage = sizeof($response['hits']['hits']);
+		$highlightingRequested = array_key_exists('highlight', $input) &&  $input['highlight'] == 1;
+
+		$mapHit = function($hit) use($highlightingRequested){
+			$mappedHit = $hit['_source'];
+			$mappedHit['score'] = $hit['_score'];
+
+			if ($highlightingRequested && array_key_exists('highlight', $hit)) {
+				foreach ($hit['highlight'] as $highlightField => $value) {
+					if ($highlightField === 'title' || strpos($highlightField, 'title.') === 0) {
+						$mappedHit['title'] = $value[0];
+					}
+					if ($highlightField === 'description' || strpos($highlightField, 'description.') === 0) {
+						$mappedHit['description'] = $value[0];
+					}
+				}
+			}
+
+			return $mappedHit;
+		};
 
 		$processedResponse = [
 			'links' => [
@@ -503,7 +562,7 @@ class Index extends Component
 			],
 			'data' => [
 				'totalHits' => $totalHits,
-				'hits' => array_map(fn($hit) => $hit['_source'], $response['hits']['hits']),
+				'hits' => array_map($mapHit, $response['hits']['hits']),
 			]
 		];
 
