@@ -65,7 +65,7 @@ class CrawlService extends Component
 	public function extractIndexableMarkup($markup): string {
 		// search for page segments explicitly allowed to be indexed.
 			// if none are found, assume the entire body may be indexed
-			$allowRegex = '/<!--\s?search:allow\s?-->(.*)<!--\s?\/\/search:allow\s?-->/Us';
+			$allowRegex = '/<!--\s?search:allow\s?-->(.*)<!--\s?\/search:allow\s?-->/Us';
 			if (preg_match_all($allowRegex, $markup, $matches, PREG_SET_ORDER, 0) > 0) {
 				$matches = array_map(fn($match) => $match[1], $matches);
 			} else {
@@ -83,7 +83,7 @@ class CrawlService extends Component
 			$content = '';
 
 			foreach ($matches as $match) {
-				$denyRegex = '/<!--\s?search:deny\s?-->(.*)<!--\s?\/\/search:deny\s?-->/Us';
+				$denyRegex = '/<!--\s?search:deny\s?-->(.*)<!--\s?\/search:deny\s?-->/Us';
 				$indexableContent = preg_replace($denyRegex, '', $match);
 				$content .= $indexableContent;
 			}
