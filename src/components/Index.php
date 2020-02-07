@@ -540,6 +540,7 @@ class Index extends Component
 
 		$mapHit = function($hit) use($highlightingRequested){
 			$mappedHit = $hit['_source'];
+			$mappedHit['id'] = $hit['_id'];
 			$mappedHit['score'] = $hit['_score'];
 
 			if ($highlightingRequested && array_key_exists('highlight', $hit)) {
