@@ -361,7 +361,7 @@ class Index extends Component
 							'multi_match' => [
 								'query'    => $queryString,
 								'type' => 'cross_fields',
-								'minimum_should_match' => '50%',
+								'minimum_should_match' => '100%',
 								'fields'   => ['title^6', 'title.edge_ngram^6', 'description^2', 'description.edge_ngram^2', 'attachment.content', 'attachment.content.edge_ngram', 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'],
 							]
 						]
