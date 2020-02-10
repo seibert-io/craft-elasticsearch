@@ -271,6 +271,23 @@ class Index extends Component
 					]
 				]
 			],
+			'description' => [
+				'type' => 'text',
+				'analyzer' => $analyzer,
+				'copy_to' => ['spellingSuggestions', 'unusualSuggestions'],
+				'store' => true,
+				//'index_phrases' => true,
+				'fields' => [
+					"ngram" => [
+						'type' => 'text',
+						'analyzer' => 'ngram_analyzer',
+					],
+					"edge_ngram" => [
+						'type' => 'text',
+						'analyzer' => 'edgengram_analyzer',
+					]
+				]
+			],
 			'url' => [
 				'type' => 'text',
 			],
@@ -342,7 +359,7 @@ class Index extends Component
 								'query'    => $queryString,
 								'type' => 'cross_fields',
 								'minimum_should_match' => '100%',
-								'fields'   => ['title^6', 'title.edge_ngram^6', 'attachment.content', 'attachment.content.edge_ngram', 'title.ngram^0.1', 'attachment.content.ngram^0.1'],
+								'fields'   => ['title^6', 'title.edge_ngram^6', 'description^2', 'description.edge_ngram^2', 'attachment.content', 'attachment.content.edge_ngram', 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'],
 							]
 						]
 					],
