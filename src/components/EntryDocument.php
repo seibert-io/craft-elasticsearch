@@ -39,11 +39,7 @@ class EntryDocument extends Document
 	{
 		$entry = $this->entry;
 
-		$seoDescription = isset($entry->seoDescription) ? $entry->seoDescription : null;
-		$socialDescription = isset($entry->socialDescription) ? $entry->socialDescription : null;
-
 		$this->title = $entry->title;
-		$this->description = $seoDescription ?? $socialDescription;
 		$this->url = $entry->url;
 		$this->postDate = $entry->postDate ? $entry->postDate->format('Y-m-d H:i:s') : null;
 		$this->noPostDate = $entry->postDate ? false : true;
