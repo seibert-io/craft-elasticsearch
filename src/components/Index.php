@@ -718,6 +718,19 @@ class Index extends Component
 
 		usort($processedResponse['data']['suggestions'], $suggestionSort);
 
+		$uniqueSuggestionTexts = [];
+
+		$filterUniqueTexts = function($suggestion) use($uniqueSuggestionTexts) {
+			if (in_array($suggestion['text'], $uniqueSuggestionTexts)) {
+				return false;
+			}
+
+			$uniqueSuggestionTexts[] = $suggestion['text'];
+			return true;
+		};
+
+		$processedResponse['data']['suggestions'] = array_filter($processedResponse['data']['suggestions'], $filterUniqueTexts);
+
 		return $processedResponse;
 	}
 
