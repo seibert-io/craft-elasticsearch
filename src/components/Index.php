@@ -718,18 +718,16 @@ class Index extends Component
 
 		usort($processedResponse['data']['suggestions'], $suggestionSort);
 
+		// make suggestions unique
 		$uniqueSuggestionTexts = [];
-
-		$filterUniqueTexts = function($suggestion) use($uniqueSuggestionTexts) {
+		foreach ($processedResponse['data']['suggestions'] as $index => $suggestion) {
 			if (in_array($suggestion['text'], $uniqueSuggestionTexts)) {
-				return false;
+				unset($processedResponse['data']['suggestions'][$index]);
+				continue;
 			}
 
 			$uniqueSuggestionTexts[] = $suggestion['text'];
-			return true;
-		};
-
-		$processedResponse['data']['suggestions'] = array_filter($processedResponse['data']['suggestions'], $filterUniqueTexts);
+		}
 
 		return $processedResponse;
 	}
