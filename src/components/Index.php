@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author David Seibert<david@seibert.io>
  */
@@ -17,28 +18,28 @@ use yii\base\Component;
 
 /**
  * An ElasticSearch index that containes documents
- * 
+ *
  * Default behavior may be altered in listeners on the following events:
- * 
+ *
  * - IndexEvent
  *   IndexEvent::EVENT_INIT - allows registration of custom properties
  *   IndexEvent::EVENT_BEFORE_CREATE - allows to perform operations on ELasticSearch, e.g. creating pipelines (set $event->handled = true to prevent default pipeline)
- *   IndexEvent::EVENT_AFTER_CREATE 
- *   IndexEvent::EVENT_AFTER_DELETE 
- * 
- * - DocumentEvent  
+ *   IndexEvent::EVENT_AFTER_CREATE
+ *   IndexEvent::EVENT_AFTER_DELETE
+ *
+ * - DocumentEvent
  *   DocumentEvent::EVENT_BEFORE_INDEX - before a document is indexed. allows modifications to the document before it is indexed - e.g. add properties (invoke $event->cancel() to prevent indexing)
  *   DocumentEvent::EVENT_BEFORE_DELETE - before a document is deleted from the index (invoke $event->cancel() to prevent deletion)
- * 
+ *
  */
 class Index extends Component
 {
 	public Site $site;
-	
+
 	public string $type;
-	
+
 	public array $settings = [];
-	
+
 	public array $sourceIncludes = [];
 
 	/**
@@ -46,7 +47,7 @@ class Index extends Component
 	 * ($input, $params, $response) => array
 	 */
 	public $searchResponseProcessor;
-	
+
 	/**
 	 * Optional suggest response processor callback. Signature:
 	 * ($input, $params, $response) => array
@@ -54,12 +55,13 @@ class Index extends Component
 	public $suggestResponseProcessor;
 
 	private array $properties = [];
-	
+
 	private string $name;
 
 	private static $instancesBySiteId = [];
-	
-	public static function getInstance(Site $site): Index {
+
+	public static function getInstance(Site $site): Index
+	{
 		$siteId = (string) $site->id;
 
 		if (!array_key_exists($siteId, self::$instancesBySiteId)) {
@@ -87,17 +89,17 @@ class Index extends Component
 		$this->on(DocumentEvent::EVENT_BEFORE_INDEX, [$this, 'onBeforeIndexDocument']);
 	}
 
-	public function setName($name): void 
+	public function setName($name): void
 	{
 		$this->name = Craft::$app->env . '-' . $name;
 	}
 
-	public function getName(): string 
+	public function getName(): string
 	{
 		return $this->name;
 	}
 
-	public function initSettings(): void 
+	public function initSettings(): void
 	{
 		$stopwordList = ElasticSearchPlugin::$plugin->getSettings()->getStopWordFilter($this->site->handle);
 
@@ -145,7 +147,7 @@ class Index extends Component
 						"token_chars" => [
 							"letter",
 							"digit"
-            ]
+						]
 					],
 					'edge_ngram_tokenizer' => [
 						"type" => "edge_ngram",
@@ -153,19 +155,19 @@ class Index extends Component
 						"max_gram" => 3,
 						"token_chars" => [
 							"letter",
-              "digit"
-            ]
+							"digit"
+						]
 					]
 				],
 				'filter' => [
 					'completion_filter' => [
 						'type' => 'edge_ngram',
 						'min_gram' => 2,
-            'max_gram' => 24,
-            "token_chars" => [
+						'max_gram' => 24,
+						"token_chars" => [
 							"letter",
-              "digit"
-            ]
+							"digit"
+						]
 					],
 					'language_stopwords' => [
 						'type' => 'stop',
@@ -179,15 +181,15 @@ class Index extends Component
 
 	/**
 	 * Register a new property that should be indexed and hence may be set in documents using this index.
-	 * 
-	 * The index supports spelling suggestions and phrase suggestions. 
+	 *
+	 * The index supports spelling suggestions and phrase suggestions.
 	 * If you'd like them to include the value of a custom registered field, add
 	 * 'copy_to' => 'phraseSuggestions', 'copy_to' => 'spellingSuggetsions' or 'copy_to' => ['phraseSuggestions', 'spellingSuggestions']
-	 * 
+	 *
 	 * @see https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping.html
-	 * 
+	 *
 	 */
-	public function registerProperty($name, $configuration): void 
+	public function registerProperty($name, $configuration): void
 	{
 		if (array_key_exists($name, $this->properties)) {
 			$message = 'Trying to overwrite existing type property \"' . $name . '\" in index \"' . $this->getName() . '\"';
@@ -198,7 +200,7 @@ class Index extends Component
 		$this->properties[$name] = $configuration;
 	}
 
-	public function initSourceIncludes(): void 
+	public function initSourceIncludes(): void
 	{
 		$this->sourceIncludes = [
 			'title',
@@ -208,7 +210,7 @@ class Index extends Component
 		];
 	}
 
-	public function initProperties(): void 
+	public function initProperties(): void
 	{
 		$analyzer = ElasticSearchPlugin::$plugin->getSettings()->getLanguageAnalyzer($this->site->handle);
 
@@ -322,22 +324,22 @@ class Index extends Component
 		];
 	}
 
-	public function getType(): string 
+	public function getType(): string
 	{
 		return $this->type;
 	}
 
-	public function getSettings(): array 
+	public function getSettings(): array
 	{
 		return $this->settings;
 	}
 
-	public function getProperties(): array 
+	public function getProperties(): array
 	{
 		return $this->properties;
 	}
 
-	public function getMappings(): array 
+	public function getMappings(): array
 	{
 		return [
 			'properties' => $this->properties,
@@ -345,13 +347,13 @@ class Index extends Component
 	}
 
 	/**
-     * @param $input
-     * @return array
-     */
-    public function getSearchQuery($input): array
-    {
+	 * @param $input
+	 * @return array
+	 */
+	public function getSearchQuery($input): array
+	{
 		$currentTimeDb = Db::prepareDateForDb(new \DateTime());
-		
+
 		$queryString = strtolower($input['query']);
 
 		$analyzer = ElasticSearchPlugin::$plugin->getSettings()->getLanguageAnalyzer($this->site->handle);
@@ -409,12 +411,12 @@ class Index extends Component
 				"fields" => [
 					"title.*" => [
 						"number_of_fragments" => 0,
-						"pre_tags" => ["<em>"], 
+						"pre_tags" => ["<em>"],
 						"post_tags" => ["</em>"]
 					],
 					"description.*" => [
 						"number_of_fragments" => 0,
-						"pre_tags" => ["<em>"], 
+						"pre_tags" => ["<em>"],
 						"post_tags" => ["</em>"]
 					]
 				]
@@ -423,11 +425,11 @@ class Index extends Component
 	}
 
 	/**
-     * @param $input
-     * @return array
-     */
-    public function getSuggestQuery($input): array
-    {
+	 * @param $input
+	 * @return array
+	 */
+	public function getSuggestQuery($input): array
+	{
 		$queryString = strtolower($input['query']);
 		$size = min(25, abs(isset($input['size']) ? (int) $input['size'] : 10));
 
@@ -441,7 +443,7 @@ class Index extends Component
 					'minimum_should_match' => '100%',
 					'analyzer' => $analyzer,
 					'operator' => 'and',
-				'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', /*'description.edge_ngram^2',*/ 'attachment.content', 'attachment.content.edge_ngram', /* 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
+					'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', /*'description.edge_ngram^2',*/ 'attachment.content', 'attachment.content.edge_ngram', /* 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
 				]
 			],
 			'suggest' => [
@@ -490,59 +492,59 @@ class Index extends Component
 			],
 			"aggregations" => [
 				"bucket_sample" => [
-				   "sampler" => [
-					  "shard_size" => 25,
-					], 
+					"sampler" => [
+						"shard_size" => 25,
+					],
 					"aggregations" => [
 						"keywords" => [
 							"significant_text" => [
 								"field" => "unusualSuggestions",
 								"min_doc_count" => 3,
 								"filter_duplicate_text" => true,
-								"source_fields" => ["attachment.content" , "title", "description"]
-							] 
-						 ] 
-					  ] 
-				] 
-			 ] 
+								"source_fields" => ["attachment.content", "title", "description"]
+							]
+						]
+					]
+				]
+			]
 		];
 	}
 
-	public function onBeforeIndexDocument(DocumentEvent $event): void 
+	public function onBeforeIndexDocument(DocumentEvent $event): void
 	{
 		$event->params['pipeline'] = 'attachment';
 	}
 
-	public function onBeforeCreateIndex(): void 
+	public function onBeforeCreateIndex(): void
 	{
 		try {
-            ElasticSearchPlugin::$plugin->client->get()->ingest()->getPipeline(['id' => 'attachment']);
-        } catch (Missing404Exception $e) {
-            Craft::info('Creating pipeline \'attachment\'');
+			ElasticSearchPlugin::$plugin->client->get()->ingest()->getPipeline(['id' => 'attachment']);
+		} catch (Missing404Exception $e) {
+			Craft::info('Creating pipeline \'attachment\'');
 
-            $this->getClient()->ingest()->putPipeline([
-                'id' => 'attachment',
-                'body' => [
-                    'description' => 'my attachment ingest processor',
-                    'processors' => [
-                        [
-                            'attachment' => [
-                                'field' => 'content',
-                                'target_field' => 'attachment',
-                                'indexed_chars' => -1,
-                                'ignore_missing' => true,
-                            ],
-                            'remove' => [
-                                'field' => 'content',
-                            ],
-                        ],
-                    ],
-                ],
-            ]);
-        }
+			$this->getClient()->ingest()->putPipeline([
+				'id' => 'attachment',
+				'body' => [
+					'description' => 'my attachment ingest processor',
+					'processors' => [
+						[
+							'attachment' => [
+								'field' => 'content',
+								'target_field' => 'attachment',
+								'indexed_chars' => -1,
+								'ignore_missing' => true,
+							],
+							'remove' => [
+								'field' => 'content',
+							],
+						],
+					],
+				],
+			]);
+		}
 	}
 
-	public static function defaultSearchResponseProcessor($input, $params, $response): array 
+	public static function defaultSearchResponseProcessor($input, $params, $response): array
 	{
 		$originalResponseRequested = array_key_exists('original', $input) &&  $input['original'] == 1;
 		if ($originalResponseRequested) return $response;
@@ -550,12 +552,12 @@ class Index extends Component
 		$createUrl = function ($params = []) use ($input): string {
 			return UrlHelper::urlWithParams(UrlHelper::baseSiteUrl() . 'search', array_merge($input, $params));
 		};
-		
+
 		$totalHits = $response['hits']['total']['value'];
 		$numHitsInPage = sizeof($response['hits']['hits']);
 		$highlightingRequested = array_key_exists('highlight', $input) &&  $input['highlight'] == 1;
 
-		$mapHit = function($hit) use($highlightingRequested){
+		$mapHit = function ($hit) use ($highlightingRequested) {
 			$mappedHit = $hit['_source'];
 			$mappedHit['id'] = $hit['_id'];
 			$mappedHit['score'] = $hit['_score'];
@@ -603,7 +605,7 @@ class Index extends Component
 		return $processedResponse;
 	}
 
-	public static function defaultSuggestResponseProcessor($input, $params, $response): array 
+	public static function defaultSuggestResponseProcessor($input, $params, $response): array
 	{
 		$originalResponseRequested = array_key_exists('original', $input) &&  $input['original'] == 1;
 		if ($originalResponseRequested) return $response;
@@ -614,18 +616,18 @@ class Index extends Component
 
 		$queryString = strtolower(trim($input['query']));
 
-		$phraseSuggestions = array_map(fn($option) => ['text' => $option['text'], 'score' => $option['_score'], 'type' => 'phrase'], $response['suggest']['phrases'][0]['options']);
-		$spellingSuggestions = array_map(fn($suggestion) => ['text' => $suggestion['text'], 'score' => $suggestion['score'] * 1000, 'type' => 'spelling'],$response['suggest']['spelling'][0]['options']);
-		$significantTextSuggestions = array_map(fn($bucket) => ['text' => $bucket['key'], 'score' => $bucket['score'], 'type' => 'significant'], $response['aggregations']['bucket_sample']['keywords']['buckets']);
-		
+		$phraseSuggestions = array_map(fn ($option) => ['text' => $option['text'], 'score' => $option['_score'], 'type' => 'phrase'], $response['suggest']['phrases'][0]['options']);
+		$spellingSuggestions = array_map(fn ($suggestion) => ['text' => $suggestion['text'], 'score' => $suggestion['score'] * 10, 'type' => 'spelling'], $response['suggest']['spelling'][0]['options']);
+		$significantTextSuggestions = array_map(fn ($bucket) => ['text' => $bucket['key'], 'score' => $bucket['score'], 'type' => 'significant'], $response['aggregations']['bucket_sample']['keywords']['buckets']);
+
 		// filter text suggestions that are already part of the input query
 		// and ensure suggestions are min. 2 letters long
-		$significantTextSuggestions = array_filter($significantTextSuggestions, fn($suggestion) => strpos($queryString, strtolower($suggestion['text'])) === false && strlen($suggestion['text']) > 2);
-					
+		$significantTextSuggestions = array_filter($significantTextSuggestions, fn ($suggestion) => strpos($queryString, strtolower($suggestion['text'])) === false && strlen($suggestion['text']) > 2);
+
 		$wordsInQuery = explode(' ', $queryString);
 		$lastwordInQuery = $wordsInQuery[sizeof($wordsInQuery) - 1];
 
-		$filterForAutoCompletions = function($suggestion) use($lastwordInQuery) {
+		$filterForAutoCompletions = function ($suggestion) use ($lastwordInQuery) {
 			return strpos(strtolower($suggestion['text']), strtolower($lastwordInQuery)) === 0;
 		};
 
@@ -655,12 +657,12 @@ class Index extends Component
 		}
 
 		// build a complete query string suggestion by combining the query string and the suggestion
-		$mapSignificantTextSuggestions = function($suggestion) use ($queryString) {
+		$mapSignificantTextSuggestions = function ($suggestion) use ($queryString) {
 			// if suggestion starts with query return the suggestion as-is
 			if (strpos(strtolower($suggestion['text']), $queryString) === 0) {
 				return $suggestion;
 			}
-			
+
 			// otherwise join query and suggestion to a new query string proposal
 			// if the last word in the query is the start of a suggestion, repace it with the suggestion
 			$wordsInQuery = explode(' ', $queryString);
@@ -678,19 +680,19 @@ class Index extends Component
 		};
 
 		$significantTextSuggestions = array_map($mapSignificantTextSuggestions, $significantTextSuggestions);
-		
+
 		// build suggestion list by joining phrase suggetsions and significant text suggestions
 		$suggestions = array_merge($phraseSuggestions, $significantTextSuggestions);
 
 		// if no suggestions were found, add spelling suggestions
-		//if (sizeof($suggestions) === 0) {
+		if (sizeof($suggestions) === 0) {
 			$suggestions = array_merge($suggestions, $spellingSuggestions);
-		//}
+		}
 
 		$wordsInQuery = explode(' ', $queryString);
-		$highlightSuggestions = function($suggestion) use($wordsInQuery) {
+		$highlightSuggestions = function ($suggestion) use ($wordsInQuery) {
 			$wordsInSuggestion = explode(' ', $suggestion['text']);
-			
+
 			for ($i = 0; $i < sizeof($wordsInSuggestion); ++$i) {
 				if (sizeof($wordsInQuery) < $i + 1 || $wordsInSuggestion[$i] != $wordsInQuery[$i]) {
 					$wordsInSuggestion[$i] = '<em>' . $wordsInSuggestion[$i] . '</em>';
@@ -705,8 +707,8 @@ class Index extends Component
 		$suggestions = array_map($highlightSuggestions, $suggestions);
 
 		// filter suggestions that contain a word multiple times
-		$suggestions = array_filter($suggestions, fn($suggestion) => sizeof(array_unique(explode(' ', $suggestion['text']))) === sizeof(explode(' ', $suggestion['text'])));
-		
+		$suggestions = array_filter($suggestions, fn ($suggestion) => sizeof(array_unique(explode(' ', $suggestion['text']))) === sizeof(explode(' ', $suggestion['text'])));
+
 
 		$processedResponse = [
 			'links' => [
@@ -719,15 +721,15 @@ class Index extends Component
 
 
 		// sort suggestions by score descending
-		$suggestionSort = function($suggestionA, $suggestionB) use($queryString) {
+		$suggestionSort = function ($suggestionA, $suggestionB) use ($queryString) {
 			$scoreA = round($suggestionA['score'] * 100000);
 			$scoreB = round($suggestionB['score'] * 100000);
-			
-			
+
+
 			// make sure prefix_matches are ranked first
 			if (strpos(strtolower($suggestionA['text']), $queryString) === 0) $scoreA += 100000;
 			if (strpos(strtolower($suggestionB['text']), $queryString) === 0) $scoreB += 100000;
-			
+
 			if ($scoreA === $scoreB) {
 				$numWordsA = sizeof(explode(' ', $suggestionA['text']));
 				$numWordsB = sizeof(explode(' ', $suggestionB['text']));
@@ -767,5 +769,4 @@ class Index extends Component
 
 		return $processedResponse;
 	}
-
 }
