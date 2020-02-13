@@ -363,7 +363,7 @@ class Index extends Component
 								'minimum_should_match' => '100%',
 								'analyzer' => $analyzer,
 								'operator' => 'and',
-								'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', 'description.edge_ngram^2',  'attachment.content', 'attachment.content.edge_ngram'/*, 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
+								'fields'   => ['title^6', 'title.edge_ngram^2', 'description', 'description.edge_ngram',  'attachment.content', 'attachment.content.edge_ngram'/*, 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
 							]
 						]
 					],
@@ -437,17 +437,17 @@ class Index extends Component
 					'minimum_should_match' => '100%',
 					'analyzer' => $analyzer,
 					'operator' => 'and',
-				'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', 'description.edge_ngram^2', 'attachment.content', 'attachment.content.edge_ngram', /*'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
+				'fields'   => ['title^6', /*'title.edge_ngram^2',*/ 'description^2', /*'description.edge_ngram^2',*/ 'attachment.content', /*'attachment.content.edge_ngram', 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
 				]
 			],
 			'suggest' => [
 				'phrases' => [
-					'text' => $queryString,
+					'prefix' => $queryString,
 					'completion' => [
 						'field' => 'phraseSuggestions',
-						'skip_duplicates' => true,
+						//'skip_duplicates' => true,
 						'size' => $size,
-						
+						'fuzzy' => true
 					],
 				],
 				'spelling' => [
@@ -461,17 +461,17 @@ class Index extends Component
 							[
 								'field' => 'spellingSuggestions.trigram',
 								'min_word_length' => 3,
-								'suggest_mode' => 'always',
+								'suggest_mode' => 'missing',
 							],
 							[
 								'field' => 'spellingSuggestions.ngram',
 								'min_word_length' => 3,
-								'suggest_mode' => 'always',
+								'suggest_mode' => 'missing',
 							],
 							[
 								'field' => 'spellingSuggestions.reverse',
 								'min_word_length' => 3,
-								'suggest_mode' => 'always',
+								'suggest_mode' => 'missing',
 								'pre_filter' => 'spelling_correction_reverse',
 								'post_filter' => 'spelling_correction_reverse',
 							],
@@ -488,7 +488,7 @@ class Index extends Component
 						"keywords" => [
 							"significant_text" => [
 								"field" => "unusualSuggestions",
-								//"min_doc_count" => 3,
+								"min_doc_count" => 3,
 								"filter_duplicate_text" => true,
 								"source_fields" => ["attachment.content" , "title", "description"]
 							] 
@@ -535,6 +535,9 @@ class Index extends Component
 
 	public static function defaultSearchResponseProcessor($input, $params, $response): array 
 	{
+		$originalResponseRequested = array_key_exists('original', $input) &&  $input['original'] == 1;
+		if ($originalResponseRequested) return $response;
+
 		$createUrl = function ($params = []) use ($input): string {
 			return UrlHelper::urlWithParams(UrlHelper::baseSiteUrl() . 'search', array_merge($input, $params));
 		};
@@ -593,6 +596,9 @@ class Index extends Component
 
 	public static function defaultSuggestResponseProcessor($input, $params, $response): array 
 	{
+		$originalResponseRequested = array_key_exists('original', $input) &&  $input['original'] == 1;
+		if ($originalResponseRequested) return $response;
+
 		$createUrl = function ($params = []) use ($input): string {
 			return UrlHelper::urlWithParams(UrlHelper::baseSiteUrl() . 'search', array_merge($input, $params));
 		};
@@ -604,8 +610,9 @@ class Index extends Component
 		$significantTextSuggestions = array_map(fn($bucket) => ['text' => $bucket['key'], 'score' => $bucket['score'], 'type' => 'significant'], $response['aggregations']['bucket_sample']['keywords']['buckets']);
 		
 		// filter text suggestions that are already part of the input query
-		$significantTextSuggestions = array_filter($significantTextSuggestions, fn($suggestion) => strpos($queryString, strtolower($suggestion['text'])) === false);
-				
+		// and ensure suggestions are min. 2 letters long
+		$significantTextSuggestions = array_filter($significantTextSuggestions, fn($suggestion) => strpos($queryString, strtolower($suggestion['text'])) === false && strlen($suggestion['text']) > 2);
+					
 		$wordsInQuery = explode(' ', $queryString);
 		$lastwordInQuery = $wordsInQuery[sizeof($wordsInQuery) - 1];
 
@@ -688,6 +695,10 @@ class Index extends Component
 
 		$suggestions = array_map($highlightSuggestions, $suggestions);
 
+		// filter suggestions that contain a word multiple times
+		$suggestions = array_filter($suggestions, fn($suggestion) => sizeof(array_unique(explode(' ', $suggestion['text']))) === sizeof(explode(' ', $suggestion['text'])));
+		
+
 		$processedResponse = [
 			'links' => [
 				'self' => $createUrl()
@@ -722,18 +733,28 @@ class Index extends Component
 			return $scoreB - $scoreA;
 		};
 
-		usort($processedResponse['data']['suggestions'], $suggestionSort);
-
 		// make suggestions unique
 		$uniqueSuggestionTexts = [];
-		foreach ($processedResponse['data']['suggestions'] as $index => $suggestion) {
+		foreach ($suggestions as $index => $suggestion) {
 			if (in_array($suggestion['text'], $uniqueSuggestionTexts)) {
-				unset($processedResponse['data']['suggestions'][$index]);
+				unset($suggestions[$index]);
 				continue;
 			}
 
 			$uniqueSuggestionTexts[] = $suggestion['text'];
 		}
+
+
+		usort($suggestions, $suggestionSort);
+
+		$processedResponse = [
+			'links' => [
+				'self' => $createUrl()
+			],
+			'data' => [
+				'suggestions' => $suggestions,
+			]
+		];
 
 		return $processedResponse;
 	}

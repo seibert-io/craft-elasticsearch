@@ -72,6 +72,7 @@ class QueryService extends Component
         $params = [
             'index' => $index->getName(),
             'stored_fields' => ['suggestions'],
+            'size' => 0,
             'body' => $event->query,
         ];
 
