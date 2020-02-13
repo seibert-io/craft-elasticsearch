@@ -350,6 +350,8 @@ class Index extends Component
 		
 		$queryString = strtolower($input['query']);
 
+		$analyzer = ElasticSearchPlugin::$plugin->getSettings()->getLanguageAnalyzer($this->site->handle);
+
 		return [
 			'query' => [
 				'bool' => [
@@ -359,7 +361,9 @@ class Index extends Component
 								'query'    => $queryString,
 								'type' => 'cross_fields',
 								'minimum_should_match' => '100%',
-								'fields'   => ['title^6', 'title.edge_ngram^6', 'description^2', 'description.edge_ngram^2', 'attachment.content', 'attachment.content.edge_ngram', 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'],
+								'analyzer' => $analyzer,
+								'operator' => 'and',
+								'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', 'description.edge_ngram^2',  'attachment.content', 'attachment.content.edge_ngram'/*, 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
 							]
 						]
 					],
@@ -423,13 +427,17 @@ class Index extends Component
 		$queryString = strtolower($input['query']);
 		$size = min(25, abs(isset($input['size']) ? (int) $input['size'] : 10));
 
+		$analyzer = ElasticSearchPlugin::$plugin->getSettings()->getLanguageAnalyzer($this->site->handle);
+
 		return [
 			'query' => [
 				'multi_match' => [
 					'query'    => $queryString,
 					'type' => 'cross_fields',
 					'minimum_should_match' => '100%',
-					'fields'   => ['title^6', 'title.*^6', 'description^2', 'description.*^2', 'attachment.content', 'attachment.content.*'],
+					'analyzer' => $analyzer,
+					'operator' => 'and',
+				'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', 'description.edge_ngram^2', 'attachment.content', 'attachment.content.edge_ngram', /*'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
 				]
 			],
 			'suggest' => [
@@ -447,22 +455,22 @@ class Index extends Component
 					'phrase' => [
 						'field' => 'spellingSuggestions.trigram',
 						'size' => $size,
-						'max_errors' => 1,
+						'max_errors' => 2,
 						'gram_size' => 4,
 						'direct_generator' => [
 							[
 								'field' => 'spellingSuggestions.trigram',
-								'min_word_length' => 2,
+								'min_word_length' => 3,
 								'suggest_mode' => 'always',
 							],
 							[
 								'field' => 'spellingSuggestions.ngram',
-								'min_word_length' => 2,
+								'min_word_length' => 3,
 								'suggest_mode' => 'always',
 							],
 							[
 								'field' => 'spellingSuggestions.reverse',
-								'min_word_length' => 2,
+								'min_word_length' => 3,
 								'suggest_mode' => 'always',
 								'pre_filter' => 'spelling_correction_reverse',
 								'post_filter' => 'spelling_correction_reverse',
@@ -592,15 +600,12 @@ class Index extends Component
 		$queryString = strtolower(trim($input['query']));
 
 		$phraseSuggestions = array_map(fn($option) => ['text' => $option['text'], 'score' => $option['_score'], 'type' => 'phrase'], $response['suggest']['phrases'][0]['options']);
-		$spellingSuggestions = array_map(fn($suggestion) => ['text' => $suggestion['text'], 'score' => $suggestion['score'] * 100, 'type' => 'spelling'],$response['suggest']['spelling'][0]['options']);
+		$spellingSuggestions = array_map(fn($suggestion) => ['text' => $suggestion['text'], 'score' => $suggestion['score'] * 1000, 'type' => 'spelling'],$response['suggest']['spelling'][0]['options']);
 		$significantTextSuggestions = array_map(fn($bucket) => ['text' => $bucket['key'], 'score' => $bucket['score'], 'type' => 'significant'], $response['aggregations']['bucket_sample']['keywords']['buckets']);
 		
 		// filter text suggestions that are already part of the input query
 		$significantTextSuggestions = array_filter($significantTextSuggestions, fn($suggestion) => strpos($queryString, strtolower($suggestion['text'])) === false);
-		
-		// check if one of the significant suggestions allows autocompletion of the query
-		$hasCompletionSignificantTextSuggestion = false;
-		
+				
 		$wordsInQuery = explode(' ', $queryString);
 		$lastwordInQuery = $wordsInQuery[sizeof($wordsInQuery) - 1];
 
@@ -616,9 +621,13 @@ class Index extends Component
 		if (sizeof($significantTextSuggestionAutoCompletions)  > 0) {
 			$significantTextSuggestions = $significantTextSuggestionAutoCompletions;
 		}
-		// if auto completions exist, use these instead of the whole set
+		// if spelling auto completions exist, use these instead of the whole set
 		if (sizeof($spellingSuggestionsAutoCompletions)  > 0) {
 			$spellingSuggestions = $spellingSuggestionsAutoCompletions;
+		}
+
+		if (sizeof($spellingSuggestions) > 2) {
+			$spellingSuggestions = array_slice($spellingSuggestions, 0, 2);
 		}
 
 		// filter significant suggestions for texts suitable for auto completion
