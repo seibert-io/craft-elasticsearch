@@ -145,7 +145,7 @@ class Index extends Component
 						"token_chars" => [
 							"letter",
 							"digit"
-						]
+            ]
 					],
 					'edge_ngram_tokenizer' => [
 						"type" => "edge_ngram",
@@ -153,15 +153,19 @@ class Index extends Component
 						"max_gram" => 3,
 						"token_chars" => [
 							"letter",
-							"digit"
-						]
+              "digit"
+            ]
 					]
 				],
 				'filter' => [
 					'completion_filter' => [
 						'type' => 'edge_ngram',
-						'min_gram' => 1,
-						'max_gram' => 24,
+						'min_gram' => 2,
+            'max_gram' => 24,
+            "token_chars" => [
+							"letter",
+              "digit"
+            ]
 					],
 					'language_stopwords' => [
 						'type' => 'stop',
@@ -437,7 +441,7 @@ class Index extends Component
 					'minimum_should_match' => '100%',
 					'analyzer' => $analyzer,
 					'operator' => 'and',
-				'fields'   => ['title^6', /*'title.edge_ngram^2',*/ 'description^2', /*'description.edge_ngram^2',*/ 'attachment.content', /*'attachment.content.edge_ngram', 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
+				'fields'   => ['title^6', 'title.edge_ngram^2', 'description^2', /*'description.edge_ngram^2',*/ 'attachment.content', 'attachment.content.edge_ngram', /* 'title.ngram^0.1', 'description.ngram^0.1', 'attachment.content.ngram^0.1'*/],
 				]
 			],
 			'suggest' => [
@@ -456,8 +460,13 @@ class Index extends Component
 						'field' => 'spellingSuggestions.trigram',
 						'size' => $size,
 						'max_errors' => 2,
-						'gram_size' => 4,
+						//'gram_size' => 4,
 						'direct_generator' => [
+							[
+								'field' => 'spellingSuggestions',
+								'min_word_length' => 3,
+								'suggest_mode' => 'missing',
+							],
 							[
 								'field' => 'spellingSuggestions.trigram',
 								'min_word_length' => 3,
