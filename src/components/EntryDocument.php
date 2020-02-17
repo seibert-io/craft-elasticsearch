@@ -39,14 +39,15 @@ class EntryDocument extends Document
 	{
 		$entry = $this->entry;
 
-		$this->title = $entry->title;
-		$this->url = $entry->url;
-		$this->postDate = $entry->postDate ? $entry->postDate->format('Y-m-d H:i:s') : null;
-		$this->noPostDate = $entry->postDate ? false : true;
-		$this->expiryDate = $entry->expiryDate ? $entry->expiryDate->format('Y-m-d H:i:s') : null;
-		$this->noExpiryDate = $entry->expiryDate ? false : true;
+		$this->title = $this->title ?? $entry->title;
+		$this->url = $this->url ?? $entry->url;
+		$this->postDate = $this->postDate ?? ($entry->postDate ? $entry->postDate->format('Y-m-d H:i:s') : null);
+		$this->expiryDate = $this->expiryDate ?? ($entry->expiryDate ? $entry->expiryDate->format('Y-m-d H:i:s') : null);
+		$this->noPostDate = $this->noPostDate ?? !$entry->postDate;
+		$this->noExpiryDate = $this->noExpiryDate?? !$entry->expiryDate;
+		if (!is_array($this->content)) $this->content = [];
 		
-		if ($entry->url) {
+		if ($entry->url && sizeof($this->content) == 0) {
 
 			try {
 				$url = ElasticSearchPlugin::$plugin->crawl->getFetchableEntryUrl($entry);
@@ -55,7 +56,7 @@ class EntryDocument extends Document
 				$content = trim($this->extractIndexableContent($responseBody));
 				
 				if ($content !== '') {
-					$this->content = base64_encode($content);
+					$this->content = array_merge($this->content, [base64_encode($content)]);
 				}
 			} catch (ConnectException $e) {
 				// Could not connect to host. This needs to be handled as this might be a configuration issue

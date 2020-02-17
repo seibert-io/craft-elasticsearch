@@ -50,6 +50,10 @@ class IndexService extends Component
             'index' => $index->getName(),
             'id' => $document->getId(),
             'body' => $document->getProperties(),
+            'client' => [
+                'timeout' => 5, // in seconds
+                'connect_timeout' => 5 // in seconds
+            ]
         ];
 
         $event = new DocumentEvent(['params' => $params]);
@@ -85,6 +89,10 @@ class IndexService extends Component
         $params = [
             'index' => $index->getName(),
             'id' => $document->getId(),
+            'client' => [
+                'timeout' => 5, // in seconds
+                'connect_timeout' => 5 // in seconds
+            ]
         ];
 
         $event = new DocumentEvent(['params' => $params]);

@@ -522,17 +522,22 @@ class Index extends Component
 		} catch (Missing404Exception $e) {
 			Craft::info('Creating pipeline \'attachment\'');
 
-			$this->getClient()->ingest()->putPipeline([
+			ElasticSearchPlugin::$plugin->client->get()->ingest()->putPipeline([
 				'id' => 'attachment',
 				'body' => [
-					'description' => 'my attachment ingest processor',
+					'description' => 'attachment ingest processor',
 					'processors' => [
 						[
-							'attachment' => [
+							"foreach" => [
 								'field' => 'content',
-								'target_field' => 'attachment',
-								'indexed_chars' => -1,
-								'ignore_missing' => true,
+								'processor' => [
+									'attachment' => [
+										'field' => '_ingest._value',
+										'target_field' => 'attachment',
+										'indexed_chars' => -1,
+										'ignore_missing' => true,
+									],
+								]
 							],
 							'remove' => [
 								'field' => 'content',

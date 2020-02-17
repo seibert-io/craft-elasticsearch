@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author David Seibert<david@seibert.io>
  */
@@ -24,61 +25,69 @@ use yii\web\BadRequestHttpException;
 class QueryService extends Component
 {
 
-    public function search($input, Index $index): array
-    {
-        if (!isset($input['query'])) {
-            throw new BadRequestHttpException('Missing query parameter');
-        }
+	public function search($input, Index $index): array
+	{
+		if (!isset($input['query'])) {
+			throw new BadRequestHttpException('Missing query parameter');
+		}
 
-        $from = abs(isset($input['from']) ? (int) $input['from'] : 0);
-        $size = min(25, max(1, abs(isset($input['size']) ? (int) $input['size'] : 10)));
+		$from = abs(isset($input['from']) ? (int) $input['from'] : 0);
+		$size = min(25, max(1, abs(isset($input['size']) ? (int) $input['size'] : 10)));
 
-        $event = new QueryEvent([
-            'input' => $input,
-            'query' => $index->getSearchQuery($input),
-        ]);
+		$event = new QueryEvent([
+			'input' => $input,
+			'query' => $index->getSearchQuery($input),
+		]);
 
-        // allow query to be modified/extended via event listeners
-        $index->trigger(QueryEvent::EVENT_BEFORE_QUERY, $event);
+		// allow query to be modified/extended via event listeners
+		$index->trigger(QueryEvent::EVENT_BEFORE_QUERY, $event);
 
-        $params = [
-            'index' => $index->getName(),
-            '_source_includes' => $index->sourceIncludes,
-            'from' => $from,
-            'size' => $size,
-            'body' => $event->query,
-        ];
+		$params = [
+			'index' => $index->getName(),
+			'_source_includes' => $index->sourceIncludes,
+			'from' => $from,
+			'size' => $size,
+			'body' => $event->query,
+			'client' => [
+				'timeout' => 5, // in seconds
+				'connect_timeout' => 5 // in seconds
+			]
+		];
 
-        $response = ElasticSearchPlugin::$plugin->client->get()->search($params);
-        $response = call_user_func($index->searchResponseProcessor, $input, $params, $response);
+		$response = ElasticSearchPlugin::$plugin->client->get()->search($params);
+		$response = call_user_func($index->searchResponseProcessor, $input, $params, $response);
 
-        return $response;
-    }
+		return $response;
+	}
 
-    public function suggest($input, Index $index): array
-    {
-        if (!isset($input['query'])) {
-            throw new BadRequestHttpException('Missing query parameter');
-        }
+	public function suggest($input, Index $index): array
+	{
+		if (!isset($input['query'])) {
+			throw new BadRequestHttpException('Missing query parameter');
+		}
 
-        $event = new QueryEvent([
-            'input' => $input,
-            'query' => $index->getSuggestQuery($input),
-        ]);
+		$event = new QueryEvent([
+			'input' => $input,
+			'query' => $index->getSuggestQuery($input),
+		]);
 
-        // allow query to be modified/extended via event listeners
-        $index->trigger(QueryEvent::EVENT_BEFORE_SUGGEST_QUERY, $event);
+		// allow query to be modified/extended via event listeners
+		$index->trigger(QueryEvent::EVENT_BEFORE_SUGGEST_QUERY, $event);
 
-        $params = [
-            'index' => $index->getName(),
-            'stored_fields' => ['suggestions'],
-            'size' => 0,
-            'body' => $event->query,
-        ];
+		$params = [
+			'index' => $index->getName(),
+			'stored_fields' => ['suggestions'],
+			'size' => 0,
+			'body' => $event->query,
+			'client' => [
+				'timeout' => 5, // in seconds
+				'connect_timeout' => 5 // in seconds
+			]
+		];
 
-        $response = ElasticSearchPlugin::$plugin->client->get()->search($params);
-        $response = call_user_func($index->suggestResponseProcessor, $input, $params, $response);
+		$response = ElasticSearchPlugin::$plugin->client->get()->search($params);
+		$response = call_user_func($index->suggestResponseProcessor, $input, $params, $response);
 
-        return $response;
-    }
+		return $response;
+	}
 }
