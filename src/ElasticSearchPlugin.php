@@ -7,6 +7,7 @@ namespace seibertio\elasticsearch;
 
 use Craft;
 use craft\elements\Entry;
+use craft\events\ElementStructureEvent;
 use craft\events\ModelEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
@@ -152,6 +153,17 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 				$this->entries->handleEntryUpdate($entry);
 			}
 		);
+
+		Event::on(Entry::class, Entry::EVENT_AFTER_MOVE_IN_STRUCTURE, function (ElementStructureEvent $event) {
+			var_dump(Entry::EVENT_AFTER_MOVE_IN_STRUCTURE);
+			if (!$event->sender) return;
+
+				/** @var Entry */
+				$entry = $event->sender;
+
+				$entry->enabled = false;
+				$this->entries->handleEntryUpdate($entry);
+        });
 
 
 		Event::on(Queue::class,Queue::EVENT_AFTER_PUSH, function (PushEvent $event) {

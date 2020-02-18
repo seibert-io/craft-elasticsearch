@@ -25,14 +25,14 @@ use seibertio\elasticsearch\jobs\IndexEntryJob;
 class EntryService extends Component
 {
 	/**
-     * Retrieves a list of the entry and all of its ancestors to an entry within the given entries site 
+     * Retrieves a list of the entry, its descendants and all of its related entries to an entry within the given entries site 
 	 * (based on a relation chain where the given entry is the original target element,
 	 * bubbling upwards recursively from there on)
      *
      * @param Entry $entry
 	 * @return Entry[]
      */
-    private function getEntryAndAncestors(Entry $entry): array
+    private function getEntryAndRelatedEntries(Entry $entry): array
     {
         $ancestors = [];
 
@@ -42,14 +42,15 @@ class EntryService extends Component
             }
 
             $relatedEntries = Entry::find()->site($entry->site)->relatedTo(['targetElement' => $entry])->unique()->all();
-
+            $relatedEntries = array_merge($relatedEntries, $entry->getDescendants(1)->all());
+            
             foreach ($relatedEntries as $ancestor) {
                 /** @var Entry $relatedEntry */
                 if (ElementHelper::isDraftOrRevision($ancestor)) {
                     continue;
                 }
 
-                $ancestors = array_merge($ancestors, $this->getEntryAndAncestors($ancestor));
+                $ancestors = array_merge($ancestors, $this->getEntryAndRelatedEntries($ancestor));
             }
         }
 
@@ -61,7 +62,7 @@ class EntryService extends Component
 		
 		if (ElementHelper::isDraftOrRevision($entry)) return;
 
-		$entries = $this->getEntryAndAncestors($entry);
+		$entries = $this->getEntryAndRelatedEntries($entry);
 
 		foreach ($entries as $entryToProcess) {
 			if ($entryToProcess->id === $entry->id && !$entry->enabled) {
