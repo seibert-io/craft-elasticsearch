@@ -155,7 +155,6 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 		);
 
 		Event::on(Entry::class, Entry::EVENT_AFTER_MOVE_IN_STRUCTURE, function (ElementStructureEvent $event) {
-			var_dump(Entry::EVENT_AFTER_MOVE_IN_STRUCTURE);
 			if (!$event->sender) return;
 
 				/** @var Entry */
