@@ -60,7 +60,7 @@ class EntryDocument extends Document
 				}
 			} catch (ConnectException $e) {
 				// Could not connect to host. This needs to be handled as this might be a configuration issue
-				Craft::error('Could connect to host. Cannot fetch url \'' . $entry->url . '\': ' . $e->getMessage() . '. The app seems to not be able to resolve the hostname. This may e.g. happen in docker setups and http://localhost base URLs Consider setting config value fetchBaseUrl of this plugin.', __METHOD__);
+				Craft::error('Could not connect to host. Cannot fetch url \'' . $entry->url . '\': ' . $e->getMessage() . '. The app seems to not be able to resolve the hostname. This may e.g. happen in docker setups and http://localhost base URLs Consider setting config value fetchBaseUrl of this plugin.', __METHOD__);
 				throw $e;
 			} catch (ServerException $e) {
 				// We can't fetch the page due to an error during page rendering - not in the responsibility of this plugin

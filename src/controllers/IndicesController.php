@@ -22,8 +22,10 @@ class IndicesController extends BaseController
         $request = Craft::$app->getRequest();
         $input = $request->getBodyParams();
 
-		$sites = $input['sites']; // '*';
-		if ($sites === '*') {
+        $sites = $input['sites']; // '*';
+        if (!$sites) {
+			$sites = [];
+		} else if ($sites === '*') {
 			$sites = Craft::$app->sites->getAllSites();
 		} else {
 			$sites = array_map(fn($siteId) => Craft::$app->sites->getSiteById($siteId), $sites);
