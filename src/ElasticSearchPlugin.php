@@ -160,7 +160,6 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 				/** @var Entry */
 				$entry = $event->sender;
 
-				$entry->enabled = false;
 				$this->entries->handleEntryUpdate($entry);
         });
 

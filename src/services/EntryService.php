@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author David Seibert<david@seibert.io>
  */
@@ -24,58 +25,61 @@ use seibertio\elasticsearch\jobs\IndexEntryJob;
  */
 class EntryService extends Component
 {
-	/**
-     * Retrieves a list of the entry, its descendants and all of its related entries to an entry within the given entries site 
-	 * (based on a relation chain where the given entry is the original target element,
-	 * bubbling upwards recursively from there on)
+    /**
+     * Retrieves a list of the entry, its descendants and all of its related entries to an entry within the given entries site
+     * (based on a relation chain where the given entry is the original target element,
+     * bubbling upwards recursively from there on)
      *
      * @param Entry $entry
-	 * @return Entry[]
+     * @return Entry[]
      */
     private function getEntryAndRelatedEntries(Entry $entry): array
     {
         $ancestors = [];
 
         if ($entry->enabled) {
-            if (sizeof(array_filter($ancestors, fn($ancestor) => $ancestor->id === $entry->id)) === 0) {
-                $ancestors[] = $entry;
-            }
+            $ancestors[] = $entry;
 
             $relatedEntries = Entry::find()->site($entry->site)->relatedTo(['targetElement' => $entry])->unique()->all();
             $relatedEntries = array_merge($relatedEntries, $entry->getDescendants(1)->all());
-            
+
             foreach ($relatedEntries as $ancestor) {
                 /** @var Entry $relatedEntry */
                 if (ElementHelper::isDraftOrRevision($ancestor)) {
                     continue;
                 }
 
-                $ancestors = array_merge($ancestors, $this->getEntryAndRelatedEntries($ancestor));
+                foreach ($this->getEntryAndRelatedEntries($ancestor) as $ancestorEntry) {
+
+                    if (sizeof(array_filter($ancestors, fn ($ancestor) => $ancestor->id === $ancestorEntry->id)) === 0) {
+                        $ancestors[] = $ancestorEntry;
+                    }
+                }
             }
         }
 
         return $ancestors;
-	}
-	
-	public function handleEntryUpdate(Entry $entry):void {
-		if (!ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexEntries()) return;
-		
-		if (ElementHelper::isDraftOrRevision($entry)) return;
+    }
 
-		$entries = $this->getEntryAndRelatedEntries($entry);
+    public function handleEntryUpdate(Entry $entry): void
+    {
+        if (!ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexEntries()) return;
 
-		foreach ($entries as $entryToProcess) {
-			if ($entryToProcess->id === $entry->id && !$entry->enabled) {
-				$job = new DeleteEntryJob(['entryId' => $entry->getId(), 'siteId' => $entry->siteId]);
-			} else {
-				$job = new IndexEntryJob(['entryId' => $entry->getId(), 'siteId' => $entry->siteId]);
-			}
+        if (ElementHelper::isDraftOrRevision($entry)) return;
 
-			if (!$job->isQueued()) {
-				$queueId = Craft::$app->queue->push($job);
-				$job->markQueued($queueId);
-			}
-			
-		}
-	}
+        $entries = $this->getEntryAndRelatedEntries($entry);
+
+        foreach ($entries as $entryToProcess) {
+            if ($entryToProcess->id === $entry->id && !$entry->enabled) {
+                $job = new DeleteEntryJob(['entryId' => $entry->getId(), 'siteId' => $entry->siteId]);
+            } else {
+                $job = new IndexEntryJob(['entryId' => $entry->getId(), 'siteId' => $entry->siteId]);
+            }
+
+            if (!$job->isQueued()) {
+                $queueId = Craft::$app->queue->push($job);
+                $job->markQueued($queueId);
+            }
+        }
+    }
 }
