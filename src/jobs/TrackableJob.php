@@ -12,7 +12,7 @@ use yii\caching\CacheInterface;
 
 abstract class TrackableJob extends Component
 {
-	private int $expiresIn = 60 * 60 * 24; // 24hrs
+	private int $expiresIn = 60 * 60; // 1hr
 	
 	public string $cacheName = 'cache';
 
