@@ -51,7 +51,7 @@ class EntryDocument extends Document
         if ($entry->url) {
 
             try {
-                $url = ElasticSearchPlugin::$plugin->crawl->getFetchableEntryUrl($entry);
+                $url = ElasticSearchPlugin::$plugin->crawl->getTokenizedUrl($entry);
                 $responseBody = ElasticSearchPlugin::$plugin->crawl->fetchURL($url);
 
                 $content = trim($this->extractIndexableContent($responseBody));

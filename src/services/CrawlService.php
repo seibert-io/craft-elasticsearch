@@ -24,7 +24,11 @@ use seibertio\elasticsearch\exceptions\MarkupExtractionException;
  */
 class CrawlService extends Component
 {
-    public function getFetchableEntryUrl(Entry $entry)
+    /**
+     * @param Entry $entry Entry to create a token for
+     * @param string|null if null $fetchUrl $entry->getUrl() will be used
+     */
+    public function getTokenizedUrl(Entry $entry, $fetchUrl = null)
     {
         $token = Craft::$app->getTokens()->createToken([
             'preview/preview',
@@ -42,7 +46,7 @@ class CrawlService extends Component
         ]);
 
         // Generate the sharable url based on the previously generated token
-        $url = UrlHelper::urlWithToken($entry->getUrl(), $token);
+        $url = UrlHelper::urlWithToken($fetchUrl ?? $entry->getUrl(), $token);
 
         // replace base url with the base url set in plugin config.
         // this is required for scenarios where the app may not resolve its own hostname and requires to use a different one to access itself
