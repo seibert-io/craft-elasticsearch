@@ -545,6 +545,16 @@ class Index extends Component
                                 ]
                             ]
                         ],
+                        [
+                            "foreach" => [
+                                'field' => 'attachments',
+                                'processor' => [
+                                    "remove" => [
+                                        'field' => '_ingest._value.input',
+                                    ]
+                                ]
+                            ]
+                        ],
                     ],
                 ],
             ]);
