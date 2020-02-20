@@ -24,6 +24,23 @@ use seibertio\elasticsearch\exceptions\MarkupExtractionException;
  */
 class CrawlService extends Component
 {
+
+    private Client $client;
+
+    public function initClient(array $config = []) {
+        $this->client = new Client($config);
+    }
+
+    public function getClient(): Client {
+        if (!$this->client) {
+            $this->initClient([
+                'timeout' => 10.0
+            ]);
+        }
+
+        return $this->client;
+    }
+
     /**
      * @param Entry $entry Entry to create a token for
      * @param string|null if null $fetchUrl $entry->getUrl() will be used
@@ -41,10 +58,6 @@ class CrawlService extends Component
             ],
         ]);
 
-        $client = new Client([
-            'timeout' => 10.0,
-        ]);
-
         // Generate the sharable url based on the previously generated token
         $url = UrlHelper::urlWithToken($fetchUrl ?? $entry->getUrl(), $token);
 
@@ -58,11 +71,7 @@ class CrawlService extends Component
 
     public function fetchURL($url)
     {
-        $client = new Client([
-            'connect_timeout' => 10,
-        ]);
-
-        $response = $client->request('GET', $url);
+        $response = $this->getClient()->request('GET', $url);
         return $response->getBody();
 	}
 	
