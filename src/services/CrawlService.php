@@ -27,17 +27,17 @@ class CrawlService extends Component
 
     private Client $client;
 
+    public function init()
+    {
+        parent::init();
+        $this->initClient();
+    }
+
     public function initClient(array $config = []) {
         $this->client = new Client($config);
     }
 
     public function getClient(): Client {
-        if (!$this->client) {
-            $this->initClient([
-                'timeout' => 10.0
-            ]);
-        }
-
         return $this->client;
     }
 
