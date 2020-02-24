@@ -33,7 +33,7 @@ class EntryService extends Component
      * @param Entry $entry
      * @return Entry[]
      */
-    private function getEntryAndRelatedEntries(Entry $entry): array
+    private function getEntryAndRelatedEntries(Entry $entry, $includeDescendants = true): array
     {
         $ancestors = [];
 
@@ -41,7 +41,9 @@ class EntryService extends Component
             $ancestors[] = $entry;
 
             $relatedEntries = Entry::find()->site($entry->site)->relatedTo(['targetElement' => $entry])->unique()->all();
-            $relatedEntries = array_merge($relatedEntries, $entry->getDescendants(1)->all());
+            if ($includeDescendants) {
+                $relatedEntries = array_merge($relatedEntries, $entry->getDescendants(1)->all());
+            }
 
             foreach ($relatedEntries as $ancestor) {
                 /** @var Entry $relatedEntry */
@@ -49,7 +51,7 @@ class EntryService extends Component
                     continue;
                 }
 
-                foreach ($this->getEntryAndRelatedEntries($ancestor) as $ancestorEntry) {
+                foreach ($this->getEntryAndRelatedEntries($ancestor, false) as $ancestorEntry) {
 
                     if (sizeof(array_filter($ancestors, fn ($ancestor) => $ancestor->id === $ancestorEntry->id)) === 0) {
                         $ancestors[] = $ancestorEntry;
@@ -70,10 +72,12 @@ class EntryService extends Component
         $entries = $this->getEntryAndRelatedEntries($entry);
 
         foreach ($entries as $entryToProcess) {
-            if ($entryToProcess->id === $entry->id && !$entry->enabled) {
-                $job = new DeleteEntryJob(['entryId' => $entry->getId(), 'siteId' => $entry->siteId]);
+            if (ElementHelper::isDraftOrRevision($entryToProcess)) continue;
+
+            if (!$entryToProcess->enabled) {
+                $job = new DeleteEntryJob(['entryId' => $entryToProcess->getId(), 'siteId' => $entryToProcess->siteId]);
             } else {
-                $job = new IndexEntryJob(['entryId' => $entry->getId(), 'siteId' => $entry->siteId]);
+                $job = new IndexEntryJob(['entryId' => $entryToProcess->getId(), 'siteId' => $entryToProcess->siteId]);
             }
 
             if (!$job->isQueued()) {

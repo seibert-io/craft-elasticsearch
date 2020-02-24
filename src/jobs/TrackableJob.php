@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author David Seibert<david@seibert.io>
  */
@@ -12,33 +13,33 @@ use yii\caching\CacheInterface;
 
 abstract class TrackableJob extends Component
 {
-	private int $expiresIn = 60 * 60; // 1hr
-	
-	public string $cacheName = 'cache';
+    private int $expiresIn = 60 * 5; // 5min
 
-	abstract public function getCacheId(): string;
+    public string $cacheName = 'cache';
 
-	public function getBaseCacheKey(): string
-	{
-		return ElementHelper::createSlug(get_class($this)) . '-';
-	}
-	
-	public function getCacheKey(): string
-	{
-		return $this->getBaseCacheKey() . $this->getCacheId();
-	}
+    abstract public function getCacheId(): string;
+
+    public function getBaseCacheKey(): string
+    {
+        return ElementHelper::createSlug(get_class($this)) . '-';
+    }
+
+    public function getCacheKey(): string
+    {
+        return $this->getBaseCacheKey() . $this->getCacheId();
+    }
 
     public function isQueued(): bool
     {
-		$jobInfo = $this->getJobInfo();
-		
+        $jobInfo = $this->getJobInfo();
+
         return $jobInfo !== false;
-	}
-	
-	public function markQueued($queueId): void
+    }
+
+    public function markQueued($queueId): void
     {
-		$this->set(['queueId' => $queueId, 'progress' => 0]);
-	}
+        $this->set(['queueId' => $queueId, 'progress' => 0]);
+    }
 
     public function markCompleted(): void
     {
@@ -47,23 +48,23 @@ abstract class TrackableJob extends Component
 
     public function updateProgress(float $progress): void
     {
-		$jobInfo = $this->getJobInfo();
-		$jobInfo['progress'] = $progress;
+        $jobInfo = $this->getJobInfo();
+        $jobInfo['progress'] = $progress;
 
-		$this->set($jobInfo);
+        $this->set($jobInfo);
     }
 
-	/**
-	 * @return float|false
-	 */
+    /**
+     * @return float|false
+     */
     public function getProgress()
     {
-		$jobInfo = $this->getJobInfo();
-		
-		if ($jobInfo) return $jobInfo['progress'];
-	}
-	
-	private function getCache(): CacheInterface
+        $jobInfo = $this->getJobInfo();
+
+        if ($jobInfo) return $jobInfo['progress'];
+    }
+
+    private function getCache(): CacheInterface
     {
         return Craft::$app->{$this->cacheName};
     }
@@ -83,12 +84,11 @@ abstract class TrackableJob extends Component
     {
         $cache = self::getCache();
         $cache->set($this->getCacheKey(), $jobInfo, $this->getExpiresIn());
-	}
-	
+    }
+
     private function delete()
     {
         $cache = self::getCache();
         return $cache->delete($this->getCacheKey());
     }
-
 }
