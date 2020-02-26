@@ -6,6 +6,7 @@
 
 namespace seibertio\elasticsearch\services;
 
+use benf\neo\elements\Block;
 use Craft;
 use craft\base\Component;
 use craft\elements\Entry;
@@ -40,10 +41,16 @@ class EntryService extends Component
         if ($entry->enabled) {
             $ancestors[] = $entry;
 
+            // find regular field relations
             $relatedEntries = Entry::find()->site($entry->site)->relatedTo(['targetElement' => $entry])->unique()->all();
             if ($includeDescendants) {
                 $relatedEntries = array_merge($relatedEntries, $entry->getDescendants(1)->all());
             }
+
+            // find neo block relations
+            $blocks = Block::find()->relatedTo(['targetElement' => $entry])->unique()->all();
+            $entriesTargetingBlock = Entry::find()->id(array_map(fn ($block) => $block->ownerId, $blocks))->all();
+            $relatedEntries = array_merge($relatedEntries, $entriesTargetingBlock);
 
             foreach ($relatedEntries as $ancestor) {
                 /** @var Entry $relatedEntry */

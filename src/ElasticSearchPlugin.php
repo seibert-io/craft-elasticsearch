@@ -126,19 +126,6 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 				$this->entries->handleEntryUpdate($entry);
 			}
 		);
-
-		Event::on(
-			Entry::class,
-			Entry::EVENT_AFTER_PROPAGATE,
-			function (ModelEvent $event) {
-				if (!$event->sender) return;
-
-				/** @var Entry */
-				$entry = $event->sender;
-
-				$this->entries->handleEntryUpdate($entry);
-			}
-		);
 		
 		Event::on(
 			Entry::class,
