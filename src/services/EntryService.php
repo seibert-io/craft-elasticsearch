@@ -94,12 +94,12 @@ class EntryService extends Component
                     
                     if (!Craft::$app->cache->get($cacheId)) {
                         $job = new IndexSiteJob(['siteId' => $entryToProcess->siteId]);
-                        Craft::$app->cache->set($cacheId, true, 60 * 60 * 2); // throttle site indexing to 2hrs TODO: move to setting?
+                        Craft::$app->cache->set($cacheId, true, 60 * 60); // throttle site indexing to 1hr TODO: move to setting?
                     }
                 }
             }
 
-            if ($job && !$job->isQueued()) {
+            if (isset($job) && !$job->isQueued()) {
                 $queueId = Craft::$app->queue->push($job);
                 $job->markQueued($queueId);
             }
