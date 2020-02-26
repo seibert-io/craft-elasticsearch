@@ -16,7 +16,7 @@ use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use yii\queue\RetryableJobInterface;
 
-class ReIndexSiteJob extends TrackableJob implements JobInterface, RetryableJobInterface
+class IndexSiteJob extends TrackableJob implements JobInterface, RetryableJobInterface
 {
     /**
      * @property string[]
@@ -32,17 +32,8 @@ class ReIndexSiteJob extends TrackableJob implements JobInterface, RetryableJobI
     public function execute($queue)
     {
         $site = $this->getSite();
-        $index = $this->getIndex();
-
-		try {
-			ElasticSearchPlugin::$plugin->indexManagement->deleteIndex($index);
-		} catch (Missing404Exception $e) {
-			// not an error - the index simply does not exist yet
-		}
-
-		ElasticSearchPlugin::$plugin->indexManagement->createIndex($index);
-
-        $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
+        
+		$indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
         $entryQuery = Entry::find()->site($site)->drafts(false)->revisions(false);
         if (sizeof($indexableSectionHandles) > 0) {
@@ -66,7 +57,7 @@ class ReIndexSiteJob extends TrackableJob implements JobInterface, RetryableJobI
 
     public function getDescription()
     {
-        return 'Rebuild the index of a Craft site';
+        return 'Index all indexable entries of a Craft site';
     }
 
     public function getTtr()
@@ -81,7 +72,7 @@ class ReIndexSiteJob extends TrackableJob implements JobInterface, RetryableJobI
 
     public function getCacheId(): string
     {
-        return $this->siteId . '-reindex';
+        return $this->siteId . '-index';
     }
 
     public function getIndex(): Index {

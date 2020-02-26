@@ -27,6 +27,8 @@ class Settings extends Model
 
     public $languageAnalyzer;
 
+    public $indexableSectionHandles;
+
     public function getHosts($siteHandle = null): array
     {
         return ConfigHelper::localizedValue($this->hosts, $siteHandle);
@@ -60,6 +62,12 @@ class Settings extends Model
     public function getStopWordFilter($siteHandle = null): string
     {
         return ConfigHelper::localizedValue($this->languageAnalyzer, $siteHandle) ?: $this->getSiteLanguageStopwordFilter($siteHandle);
+    }
+
+
+    public function getIndexableSectionHandles($siteHandle = null): array
+    {
+        return ConfigHelper::localizedValue($this->indexableSectionHandles, $siteHandle);
     }
 
     /**

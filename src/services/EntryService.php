@@ -13,7 +13,7 @@ use craft\elements\Entry;
 use craft\helpers\ElementHelper;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\jobs\DeleteEntryJob;
-use seibertio\elasticsearch\jobs\IndexEntryJob;
+use seibertio\elasticsearch\jobs\IndexSiteJob;
 
 /**
  * Entry Service
@@ -76,7 +76,8 @@ class EntryService extends Component
 
         if (ElementHelper::isDraftOrRevision($entry)) return;
 
-        $entries = $this->getEntryAndRelatedEntries($entry);
+        //$entries = $this->getEntryAndRelatedEntries($entry);
+        $entries = [$entry];
 
         foreach ($entries as $entryToProcess) {
             if (ElementHelper::isDraftOrRevision($entryToProcess)) continue;
@@ -84,7 +85,12 @@ class EntryService extends Component
             if (!$entryToProcess->enabled) {
                 $job = new DeleteEntryJob(['entryId' => $entryToProcess->getId(), 'siteId' => $entryToProcess->siteId]);
             } else {
-                $job = new IndexEntryJob(['entryId' => $entryToProcess->getId(), 'siteId' => $entryToProcess->siteId]);
+                $cacheId = ElementHelper::createSlug(get_class($this)) . '-indexsite-throttle-' . $entryToProcess->siteId;
+
+                if (!Craft::$app->cache->get($cacheId)) {
+                    $job = new IndexSiteJob(['siteId' => $entryToProcess->siteId]);
+                    Craft::$app->cache->set($cacheId, true, 60 * 60 * 2); // throttle site indexing to 2hrs TODO: move to setting?
+                }
             }
 
             if (!$job->isQueued()) {

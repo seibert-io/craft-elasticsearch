@@ -67,4 +67,12 @@ return [
      * If not set, a best-guess fallback for each site will be used based on the sites' language
      */
     'languageAnalyzer' => '',
+
+    /**
+     * Sections of which entries may be indexed
+     * Empty array = unrestricted
+     */
+    'indexableSectionHandles' => function (string $siteHandle) {
+        return [];
+    },
 ];
