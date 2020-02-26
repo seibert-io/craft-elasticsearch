@@ -13,6 +13,7 @@ use craft\elements\Entry;
 use craft\helpers\ElementHelper;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\jobs\DeleteEntryJob;
+use seibertio\elasticsearch\jobs\IndexEntryJob;
 use seibertio\elasticsearch\jobs\IndexSiteJob;
 
 /**
@@ -85,11 +86,16 @@ class EntryService extends Component
             if (!$entryToProcess->enabled) {
                 $job = new DeleteEntryJob(['entryId' => $entryToProcess->getId(), 'siteId' => $entryToProcess->siteId]);
             } else {
-                $cacheId = ElementHelper::createSlug(get_class($this)) . '-indexsite-throttle-' . $entryToProcess->siteId;
-
-                if (!Craft::$app->cache->get($cacheId)) {
-                    $job = new IndexSiteJob(['siteId' => $entryToProcess->siteId]);
-                    Craft::$app->cache->set($cacheId, true, 60 * 60 * 2); // throttle site indexing to 2hrs TODO: move to setting?
+                $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
+                if (sizeof($indexableSectionHandles) === 0 || in_array($entryToProcess->section->handle, $indexableSectionHandles)) {
+                    $job = new IndexEntryJob(['entryId' => $entryToProcess->id, 'siteId' => $entryToProcess->siteId]);
+                } else {
+                    $cacheId = ElementHelper::createSlug(get_class($this)) . '-indexsite-throttle-' . $entryToProcess->siteId;
+                    
+                    if (!Craft::$app->cache->get($cacheId)) {
+                        $job = new IndexSiteJob(['siteId' => $entryToProcess->siteId]);
+                        Craft::$app->cache->set($cacheId, true, 60 * 60 * 2); // throttle site indexing to 2hrs TODO: move to setting?
+                    }
                 }
             }
 
