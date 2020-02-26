@@ -46,12 +46,12 @@ class EntryService extends Component
             if ($includeDescendants) {
                 $relatedEntries = array_merge($relatedEntries, $entry->getDescendants(1)->all());
             }
-
+            /*
             // find neo block relations
             $blocks = Block::find()->relatedTo(['targetElement' => $entry])->unique()->all();
             $entriesTargetingBlock = Entry::find()->id(array_map(fn ($block) => $block->ownerId, $blocks))->all();
             $relatedEntries = array_merge($relatedEntries, $entriesTargetingBlock);
-
+            */
             foreach ($relatedEntries as $ancestor) {
                 /** @var Entry $relatedEntry */
                 if (ElementHelper::isDraftOrRevision($ancestor)) {
