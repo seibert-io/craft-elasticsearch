@@ -99,7 +99,7 @@ class EntryService extends Component
                 }
             }
 
-            if (!$job->isQueued()) {
+            if ($job && !$job->isQueued()) {
                 $queueId = Craft::$app->queue->push($job);
                 $job->markQueued($queueId);
             }
