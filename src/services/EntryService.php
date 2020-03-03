@@ -14,7 +14,6 @@ use craft\helpers\ElementHelper;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\jobs\DeleteEntryJob;
 use seibertio\elasticsearch\jobs\IndexEntryJob;
-use seibertio\elasticsearch\jobs\IndexSiteJob;
 
 /**
  * Entry Service
@@ -89,13 +88,6 @@ class EntryService extends Component
                 $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
                 if (sizeof($indexableSectionHandles) === 0 || in_array($entryToProcess->section->handle, $indexableSectionHandles)) {
                     $job = new IndexEntryJob(['entryId' => $entryToProcess->id, 'siteId' => $entryToProcess->siteId]);
-                } else {
-                    $cacheId = ElementHelper::createSlug(get_class($this)) . '-indexsite-throttle-' . $entryToProcess->siteId;
-                    
-                    if (!Craft::$app->cache->get($cacheId)) {
-                        $job = new IndexSiteJob(['siteId' => $entryToProcess->siteId]);
-                        Craft::$app->cache->set($cacheId, true, 60 * 60); // throttle site indexing to 1hr TODO: move to setting?
-                    }
                 }
             }
 
