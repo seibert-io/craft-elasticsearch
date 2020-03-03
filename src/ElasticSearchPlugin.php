@@ -6,6 +6,7 @@
 namespace seibertio\elasticsearch;
 
 use Craft;
+use craft\console\Application as ConsoleApplication;
 use craft\elements\Entry;
 use craft\events\ElementStructureEvent;
 use craft\events\ModelEvent;
@@ -59,6 +60,11 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 		$this->registerServices();
 		$this->registerEventListeners();
 		$this->registerRoutes();
+
+		// Add console commands
+        if (Craft::$app instanceof ConsoleApplication) {
+            $this->controllerNamespace = 'seibertio\elasticsearch\console\controllers';
+        }
 
 		Craft::info('ElasticSearch plugin loaded');
 	}
