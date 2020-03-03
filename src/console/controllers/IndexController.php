@@ -22,7 +22,7 @@ class IndexController extends Controller
     {
         $this->stdout('Adding ElasticSearch indexing to queue...' . PHP_EOL, Console::FG_GREY);
 
-        foreach (Craft::$app->sites as $site) {
+        foreach (Craft::$app->sites->getAllSites() as $site) {
             /** @var Site $site */
             $job = new IndexSiteJob(['siteId' => $site->id]);
             Craft::$app->queue->push($job);
@@ -37,7 +37,7 @@ class IndexController extends Controller
     {
         $this->stdout('Adding ElasticSearch re-indexing to queue...' . PHP_EOL, Console::FG_GREY);
 
-        foreach (Craft::$app->sites as $site) {
+        foreach (Craft::$app->sites->getAllSites() as $site) {
             /** @var Site $site */
             $job = new ReIndexSiteJob(['siteId' => $site->id]);
             Craft::$app->queue->push($job);
