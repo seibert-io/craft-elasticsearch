@@ -12,6 +12,7 @@ use craft\helpers\ElementHelper;
 use craft\models\Site;
 use craft\queue\JobInterface;
 use Elasticsearch\Common\Exceptions\Missing404Exception;
+use Exception;
 use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use yii\queue\RetryableJobInterface;
@@ -56,8 +57,12 @@ class ReIndexSiteJob extends TrackableJob implements JobInterface, RetryableJobI
 		$entriesProcessed = 0;
 
 		foreach ($entriesToIndex as $entry) {
-			$this->updateProgress($entriesProcessed / $entriesTotal);
-			ElasticSearchPlugin::$plugin->index->indexEntry($entry);
+            $this->updateProgress($entriesProcessed / $entriesTotal);
+            try {
+                ElasticSearchPlugin::$plugin->index->indexEntry($entry);
+            } catch (Exception $e) {
+                Craft::error($e);
+            }
 			$entriesProcessed++;
 		}
 
