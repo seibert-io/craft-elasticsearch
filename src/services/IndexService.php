@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author David Seibert<david@seibert.io>
  */
@@ -23,25 +24,26 @@ use seibertio\elasticsearch\events\DocumentEvent;
  * https://craftcms.com/docs/plugins/services
  */
 class IndexService extends Component
-{   
+{
     /**
-	 * @param Entry $entry
-	 * @param Index|null $index if not provided, the default index will be used
-	 */
-    public function indexEntry(Entry $entry, $index = null): void
+     * @param Entry $entry
+     * @param Index|null $index if not provided, the default index will be used
+     */
+    public function indexEntry(Entry $entry, $index = null): bool
     {
         $document = new EntryDocument($entry, $index);
-        $this->indexDocument($document);
+        return $this->indexDocument($document);
     }
 
-    public function indexDocument(Document $document): void
+    public function indexDocument(Document $document): bool
     {
         // trigger event to allow collection of properties
         $event = new DocumentEvent();
         $document->trigger(DocumentEvent::EVENT_BEFORE_INDEX, $event);
 
+
         if ($event->isCanceled()) {
-            return;
+            return false;
         }
 
         $index = $document->getIndex();
@@ -60,28 +62,30 @@ class IndexService extends Component
         $index->trigger(DocumentEvent::EVENT_BEFORE_INDEX, $event);
 
         if ($event->isCanceled()) {
-            return;
+            return false;
         }
 
         ElasticSearchPlugin::$plugin->client->get()->index($event->params);
+
+        return true;
     }
 
     /**
-	 * @param Entry $entry
-	 * @param Index|null $index if not provided, the default index will be used
-	 */
-    public function deleteEntry(Entry $entry, $index = null): void
+     * @param Entry $entry
+     * @param Index|null $index if not provided, the default index will be used
+     */
+    public function deleteEntry(Entry $entry, $index = null): bool
     {
         $document = new EntryDocument($entry, $index);
-        $this->deleteDocument($document);
+        return $this->deleteDocument($document);
     }
 
-    public function deleteDocument(Document $document): void
+    public function deleteDocument(Document $document): bool
     {
         $event = new DocumentEvent();
         $document->trigger(DocumentEvent::EVENT_BEFORE_DELETE, $event);
         if ($event->isCanceled()) {
-            return;
+            return false;
         }
 
         $index = $document->getIndex();
@@ -98,10 +102,10 @@ class IndexService extends Component
         $event = new DocumentEvent(['params' => $params]);
         $index->trigger(DocumentEvent::EVENT_BEFORE_DELETE, $event);
         if ($event->isCanceled()) {
-            return;
+            return false;
         }
 
         ElasticSearchPlugin::$plugin->client->get()->delete($params);
+        return true;
     }
-
 }
