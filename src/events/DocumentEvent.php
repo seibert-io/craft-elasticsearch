@@ -9,6 +9,8 @@ use yii\base\Event;
 
 class DocumentEvent extends Event
 {
+	const EVENT_INIT = 'onInit';
+	
     const EVENT_BEFORE_INDEX = 'beforeIndex';
 	
 	const EVENT_BEFORE_DELETE = 'beforeDelete';
