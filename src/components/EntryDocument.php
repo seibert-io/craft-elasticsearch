@@ -35,8 +35,10 @@ class EntryDocument extends Document
     {
         $entry = $this->entry;
 
-        $this->title = $this->title ?? $entry->title;
-        $this->url = $this->url ?? $entry->url;
+        if (empty($this->title)) {
+            $this->title = $entry->title;
+        }
+
         $this->postDate = $this->postDate ?? ($entry->postDate ? $entry->postDate->format('Y-m-d H:i:s') : null);
         $this->expiryDate = $this->expiryDate ?? ($entry->expiryDate ? $entry->expiryDate->format('Y-m-d H:i:s') : null);
         $this->noPostDate = $this->noPostDate ?? !$entry->postDate;

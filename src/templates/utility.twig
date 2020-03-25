@@ -65,12 +65,24 @@
         {{ csrfInput() }}
 
         <h2>Rebuild indices</h2>
-        {{ forms.checkboxSelect({
+
+        {{ forms.checkboxSelectField({
+			label: 'Sites',
+			instructions: 'Sites for which the indexing should be performed',
             name: 'sites',
             options: sites,
             showAllOption: true,
-            values: '*',
+            values: [],
         }) }}
+
+		{{ forms.lightswitchField({
+            label: 'Re-create index',
+            instructions: 'Will delete and recreate the index before indexing. This will lead to a time with no to little items in index while re-indexing is performed.',
+            id: "recreate",
+            name: "recreate",
+            on: false
+        }) }}
+
 
         <div class="buttons">
             <input type="submit" class="btn submit" value="Rebuild"/>

@@ -40,10 +40,13 @@ class IndexController extends Controller
     {
         $this->stdout('Indexing sites...' . PHP_EOL, Console::FG_GREY);
 
+        $startIndexAllSites = microtime(true);
+
         foreach (Craft::$app->sites->getAllSites() as $site) {
             $this->stdout('Indexing site ' . $site->handle . '...' . PHP_EOL, Console::FG_GREY);
             /** @var Site $site */
 
+            $startIndexSite = microtime(true);
             $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
             $entryQuery = Entry::find()->site($site)->drafts(false)->revisions(false);
@@ -57,19 +60,28 @@ class IndexController extends Controller
             $entriesTotal = sizeof($entriesToIndex);
             $entriesProcessed = 0;
 
-            $this->stdout($entriesTotal . ' total' . PHP_EOL, Console::FG_GREY);
+            $this->stdout($entriesTotal . ' entries to process...' . PHP_EOL, Console::FG_GREY);
 
             foreach ($entriesToIndex as $entry) {
+                $startIndexEntry = microtime(true);
                 $indexed = ElasticSearchPlugin::$plugin->index->indexEntry($entry);
-
+                $endIndexEntry = microtime(true);
+                $durationIndexEntry = $endIndexEntry - $startIndexEntry;
                 $entriesProcessed++;
 
                 $color = $indexed ? Console::FG_GREEN : Console::FG_YELLOW;
-                $this->stdout($entriesProcessed . '/' . $entriesTotal . ' (' . round(($entriesProcessed / $entriesTotal) * 100) . '%)' . PHP_EOL, $color);
+                $this->stdout($entriesProcessed . '/' . $entriesTotal . ' - ' . (round($durationIndexEntry * 100) / 100) . 's (' . round(($entriesProcessed / $entriesTotal) * 100) . '%)' . PHP_EOL, $color);
             }
+
+            $endIndexSite = microtime(true);
+            $durationIndexSite = $endIndexSite - $startIndexSite;
+            $this->stdout('Finished indexing site ' . $site->handle . ' in ' . (round($durationIndexSite * 100) / 100) . 's.' . PHP_EOL, Console::FG_GREEN);
         }
 
-        $this->stdout('Finished indexing.' . PHP_EOL, Console::FG_GREEN);
+        $endIndexAllSites = microtime(true);
+        $durationIndexAllSites = $endIndexAllSites - $startIndexAllSites;
+
+        $this->stdout('Finished indexing all sites in ' . (round($durationIndexAllSites * 100) / 100) . 's.' . PHP_EOL, Console::FG_GREEN);
 
         return ExitCode::OK;
     }

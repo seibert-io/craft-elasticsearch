@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author David Seibert<david@seibert.io>
  */
@@ -10,6 +11,7 @@ use craft\base\Utility;
 use craft\helpers\ArrayHelper;
 use Elasticsearch\Common\Exceptions\Missing404Exception;
 use seibertio\elasticsearch\ElasticSearchPlugin;
+use seibertio\elasticsearch\jobs\IndexSiteJob;
 use seibertio\elasticsearch\jobs\ReIndexSiteJob;
 
 class IndexUtility extends Utility
@@ -80,11 +82,16 @@ class IndexUtility extends Utility
                 $comments[] = 'Warning: index does not exist. Consider rebuilding.';
             }
 
-            // create a re-index job stub just to retrieve it's job info. it won't be added to the queue
-            $job = new ReIndexSiteJob(['siteId' => $site->id]);
+            // create job stubs just to retrieve the job info. it won't be added to the queue
+            $reIndexjob = new ReIndexSiteJob(['siteId' => $site->id]);
+            $indexjob = new IndexSiteJob(['siteId' => $site->id]);
 
-            if ($job->getProgress() > 0) {
-                $comments[] = 'Indexing in progress (' . round($job->getProgress() * 100) . '%)';
+            if ($reIndexjob->getProgress() > 0) {
+                $comments[] = 'Re-indexing in progress (' . round($reIndexjob->getProgress() * 100) . '%)';
+            }
+
+            if ($indexjob->getProgress() > 0) {
+                $comments[] = 'Indexing in progress (' . round($indexjob->getProgress() * 100) . '%)';
             }
 
             $insights[$site->id] = [
