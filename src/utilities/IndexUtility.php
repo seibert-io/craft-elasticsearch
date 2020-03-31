@@ -22,7 +22,7 @@ class IndexUtility extends Utility
      */
     public static function displayName(): string
     {
-        return 'ElasticSearch';
+        return 'Elasticsearch';
     }
 
     /**
