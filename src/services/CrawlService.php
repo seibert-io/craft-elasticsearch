@@ -124,6 +124,8 @@ class CrawlService extends Component
         // replace base url with the base url set in plugin config.
         // this is required for scenarios where the app may not resolve its own hostname and requires to use a different one to access itself
         // this happens e.g. in local docker environments where the app url is http://localhost as seen from the host machine
-        return str_replace(UrlHelper::baseUrl(), ElasticSearchPlugin::$plugin->getSettings()->getFetchBaseUrl(), $url);
+        $fetchBaseUrl = ElasticSearchPlugin::$plugin->getSettings()->getFetchBaseUrl();
+        if (empty($fetchBaseUrl)) return $url;
+        return preg_replace('/https?:\/\/[^\/]+(.*)/', $fetchBaseUrl . '$1', $url);
     }
 }

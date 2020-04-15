@@ -7,6 +7,10 @@ use craft\elements\Entry;
 use craft\helpers\Console;
 use craft\helpers\ElementHelper;
 use craft\models\Site;
+use Elasticsearch\Common\Exceptions\Missing404Exception;
+use Exception;
+use seibertio\elasticsearch\components\Document;
+use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\jobs\IndexSiteJob;
 use seibertio\elasticsearch\jobs\ReIndexSiteJob;
@@ -46,6 +50,16 @@ class IndexController extends Controller
             $this->stdout('Indexing site ' . $site->handle . '...' . PHP_EOL, Console::FG_GREY);
             /** @var Site $site */
 
+            $index = Index::getInstance($site);
+
+            try {
+                ElasticSearchPlugin::$plugin->indexManagement->createIndex($index);
+            } catch (Exception $e) {
+                // index already exists
+            }
+
+            $existingDocumentIds = ElasticSearchPlugin::$plugin->index->getDocumentIDs($index);
+
             $startIndexSite = microtime(true);
             $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
@@ -62,15 +76,36 @@ class IndexController extends Controller
 
             $this->stdout($entriesTotal . ' entries to process...' . PHP_EOL, Console::FG_GREY);
 
+            $indexedDocumentIds = [];
+
             foreach ($entriesToIndex as $entry) {
                 $startIndexEntry = microtime(true);
-                $indexed = ElasticSearchPlugin::$plugin->index->indexEntry($entry);
+                $documentIndexed = ElasticSearchPlugin::$plugin->index->indexEntry($entry);
                 $endIndexEntry = microtime(true);
                 $durationIndexEntry = $endIndexEntry - $startIndexEntry;
                 $entriesProcessed++;
 
-                $color = $indexed ? Console::FG_GREEN : Console::FG_YELLOW;
+                $color = $documentIndexed !== false ? Console::FG_GREEN : Console::FG_YELLOW;
+
+                if ($documentIndexed !== false)
+                    $indexedDocumentIds[] = $documentIndexed->getId();
+
                 $this->stdout($entriesProcessed . '/' . $entriesTotal . ' - ' . (round($durationIndexEntry * 100) / 100) . 's (' . round(($entriesProcessed / $entriesTotal) * 100) . '%)' . PHP_EOL, $color);
+            }
+
+            $removableDocumentIds = array_diff($existingDocumentIds, $indexedDocumentIds);
+
+            if (sizeof($removableDocumentIds) > 0) {
+
+                $this->stdout('Removing ' . sizeof($removableDocumentIds) . ' old documents from index...' . PHP_EOL, Console::FG_GREY);
+
+                foreach ($removableDocumentIds  as $documentId) {
+                    try {
+                        ElasticSearchPlugin::$plugin->index->deleteDocument(new Document($documentId, $index));
+                    } catch (Missing404Exception $e) {
+                        // ignore: document was removed before we could
+                    }
+                }
             }
 
             $endIndexSite = microtime(true);

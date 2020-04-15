@@ -14,6 +14,7 @@ use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\services\Utilities;
 use craft\web\UrlManager;
+use seibertio\elasticsearch\components\EntryDocument;
 use seibertio\elasticsearch\jobs\TrackableJob;
 use seibertio\elasticsearch\models\Settings;
 use seibertio\elasticsearch\services\ClientService;
@@ -143,7 +144,11 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 				$entry = $event->sender;
 
 				$entry->enabled = false;
-				$this->entries->handleEntryUpdate($entry);
+				
+				$indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
+                if (sizeof($indexableSectionHandles) === 0 || in_array($entry->section->handle, $indexableSectionHandles)) {
+                    ElasticSearchPlugin::$plugin->index->deleteDocument(new EntryDocument($entry));
+                }
 			}
 		);
 
@@ -155,7 +160,6 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 
 				$this->entries->handleEntryUpdate($entry);
         });
-
 
 		Event::on(Queue::class,Queue::EVENT_AFTER_PUSH, function (PushEvent $event) {
 			if ($event->job instanceof TrackableJob) {

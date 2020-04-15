@@ -28,14 +28,19 @@ class IndexService extends Component
     /**
      * @param Entry $entry
      * @param Index|null $index if not provided, the default index will be used
+     * @return Document|false falseif cancelled
      */
-    public function indexEntry(Entry $entry, $index = null): bool
+    public function indexEntry(Entry $entry, $index = null)
     {
         $document = new EntryDocument($entry, $index);
         return $this->indexDocument($document);
     }
 
-    public function indexDocument(Document $document): bool
+    /**
+     * @param Document $document
+     * @return Document|false falseif cancelled
+     */
+    public function indexDocument(Document $document)
     {
         // trigger event to allow collection of properties
         $event = new DocumentEvent();
@@ -67,7 +72,7 @@ class IndexService extends Component
 
         ElasticSearchPlugin::$plugin->client->get()->index($event->params);
 
-        return true;
+        return $document;
     }
 
     /**
@@ -107,5 +112,37 @@ class IndexService extends Component
 
         ElasticSearchPlugin::$plugin->client->get()->delete($params);
         return true;
+    }
+
+    public function getDocumentIDs($index): array
+    {
+        $params = [
+            'index' => $index->getName(),
+            'size' => 250,
+            'scroll' => "20s",
+            '_source_includes' => ['id'],
+            'stored_fields' => [],
+            'body' => ['query' => ['match_all' => new \stdClass()]],
+            'client' => [
+                'timeout' => 5, // in seconds
+                'connect_timeout' => 5 // in seconds
+            ]
+        ];
+
+        $response = ElasticSearchPlugin::$plugin->client->get()->search($params);
+        $ids = array_map(fn ($hit) => $hit['_id'], $response['hits']['hits']);
+        $totalDocuments = $response['hits']['total']['value'];
+
+        while (sizeof($ids) < $totalDocuments && sizeof($response['hits']['hits']) > 0) {
+            $params = [
+                'scroll_id' => $response['_scroll_id'],
+                'scroll' => '20s'
+            ];
+
+            $response = ElasticSearchPlugin::$plugin->client->get()->scroll($params);
+            $ids = array_merge($ids, array_map(fn ($hit) => $hit['_id'], $response['hits']['hits']));
+        }
+
+        return $ids;
     }
 }

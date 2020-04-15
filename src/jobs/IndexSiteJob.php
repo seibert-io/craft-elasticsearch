@@ -13,6 +13,7 @@ use craft\models\Site;
 use craft\queue\JobInterface;
 use Elasticsearch\Common\Exceptions\Missing404Exception;
 use Exception;
+use seibertio\elasticsearch\components\Document;
 use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use yii\queue\RetryableJobInterface;
@@ -33,29 +34,49 @@ class IndexSiteJob extends TrackableJob implements JobInterface, RetryableJobInt
     public function execute($queue)
     {
         $site = $this->getSite();
-        
-		$indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
+
+        $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
         $entryQuery = Entry::find()->site($site)->drafts(false)->revisions(false);
         if (sizeof($indexableSectionHandles) > 0) {
             $entryQuery->section($indexableSectionHandles);
         }
 
-		/** @var Entry[] */
-		$entriesToIndex = array_filter($entryQuery->all(), fn(Entry $entry) => $entry->enabled && !ElementHelper::isDraftOrRevision($entry));
-		
-		$entriesTotal = sizeof($entriesToIndex);
-		$entriesProcessed = 0;
+        /** @var Entry[] */
+        $entriesToIndex = array_filter($entryQuery->all(), fn (Entry $entry) => $entry->enabled && !ElementHelper::isDraftOrRevision($entry));
 
-		foreach ($entriesToIndex as $entry) {
-			$this->updateProgress($entriesProcessed / $entriesTotal);
-			try {
-                ElasticSearchPlugin::$plugin->index->indexEntry($entry);
+        $entriesTotal = sizeof($entriesToIndex);
+        $entriesProcessed = 0;
+
+        $index = Index::getInstance($site);
+
+        $existingDocumentIds = ElasticSearchPlugin::$plugin->index->getDocumentIDs($index);
+        $indexedDocumentIds = [];
+
+        foreach ($entriesToIndex as $entry) {
+            $this->updateProgress($entriesProcessed / $entriesTotal);
+            try {
+                $documentIndexed = ElasticSearchPlugin::$plugin->index->indexEntry($entry);
+
+                if ($documentIndexed !== false)
+                    $indexedDocumentIds[] = $documentIndexed->getId();
             } catch (Exception $e) {
                 Craft::error($e);
             }
-			$entriesProcessed++;
-		}
+
+            $entriesProcessed++;
+        }
+
+        $removableDocumentIds = array_diff($existingDocumentIds, $indexedDocumentIds);
+
+        foreach ($removableDocumentIds  as $documentId) {
+            try {
+                ElasticSearchPlugin::$plugin->index->deleteDocument(new Document($documentId, $index));
+            } catch (Missing404Exception $e) {
+                // ignore: document was removed before we could
+            }
+        }
+
 
         $this->markCompleted();
     }
@@ -80,8 +101,9 @@ class IndexSiteJob extends TrackableJob implements JobInterface, RetryableJobInt
         return $this->siteId . '-index';
     }
 
-    public function getIndex(): Index {
-		$site = $this->getSite();
-		return ElasticSearchPlugin::$plugin->indexManagement->getSiteIndex($site);
-	}
+    public function getIndex(): Index
+    {
+        $site = $this->getSite();
+        return ElasticSearchPlugin::$plugin->indexManagement->getSiteIndex($site);
+    }
 }
