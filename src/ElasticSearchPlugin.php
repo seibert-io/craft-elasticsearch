@@ -12,8 +12,10 @@ use craft\events\ElementStructureEvent;
 use craft\events\ModelEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
+use craft\helpers\ElementHelper;
 use craft\services\Utilities;
 use craft\web\UrlManager;
+use Exception;
 use seibertio\elasticsearch\components\EntryDocument;
 use seibertio\elasticsearch\jobs\TrackableJob;
 use seibertio\elasticsearch\models\Settings;
@@ -139,15 +141,21 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 			Entry::EVENT_AFTER_DELETE,
 			function (Event $event) {
 				if (!$event->sender) return;
-
+				
 				/** @var Entry */
 				$entry = $event->sender;
+
+				if (ElementHelper::isDraftOrRevision($entry)) return;
 
 				$entry->enabled = false;
 				
 				$indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
                 if (sizeof($indexableSectionHandles) === 0 || in_array($entry->section->handle, $indexableSectionHandles)) {
-                    ElasticSearchPlugin::$plugin->index->deleteDocument(new EntryDocument($entry));
+					try {
+						ElasticSearchPlugin::$plugin->index->deleteDocument(new EntryDocument($entry));
+					} catch (Exception $e) {
+						// ignore that document may not have been indexed
+					}
                 }
 			}
 		);
