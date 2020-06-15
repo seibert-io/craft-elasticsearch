@@ -5,14 +5,11 @@
 
 namespace seibertio\elasticsearch\jobs;
 
-use Craft;
 use craft\elements\Entry;
 use craft\queue\JobInterface;
 use Elasticsearch\Common\Exceptions\Missing404Exception;
-use Exception;
 use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
-use seibertio\elasticsearch\exceptions\IndexConfigurationException;
 use yii\queue\RetryableJobInterface;
 
 class IndexEntryJob extends TrackableJob implements JobInterface, RetryableJobInterface
@@ -21,7 +18,7 @@ class IndexEntryJob extends TrackableJob implements JobInterface, RetryableJobIn
 	
 	public int $siteId;
 
-    public function getEntry(): Entry
+    public function getEntry()
     {
 		return Entry::find()->id($this->entryId)->siteId($this->siteId)->one();
     }
@@ -29,6 +26,10 @@ class IndexEntryJob extends TrackableJob implements JobInterface, RetryableJobIn
     public function execute($queue)
     {
 			$entry = $this->getEntry();
+			// Don't do anything if the entry that was requested to be indexed does not exist any longer
+
+			if (!$entry) return;
+
 			$index = $this->getIndex();
 
 			try {
