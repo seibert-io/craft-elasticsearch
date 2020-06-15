@@ -6,11 +6,11 @@
 
 namespace seibertio\elasticsearch\services;
 
-use Craft;
 use craft\base\Component;
 use craft\elements\Entry;
 use seibertio\elasticsearch\components\Document;
 use seibertio\elasticsearch\components\EntryDocument;
+use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\events\DocumentEvent;
 
@@ -93,11 +93,14 @@ class IndexService extends Component
             return false;
         }
 
-        $index = $document->getIndex();
+        return $this->deleteDocumentById($document->getIndex(), $document->getId());
+    }
 
+    public function deleteDocumentById(Index $index, $documentId): bool
+    {
         $params = [
             'index' => $index->getName(),
-            'id' => $document->getId(),
+            'id' => $documentId,
             'client' => [
                 'timeout' => 5, // in seconds
                 'connect_timeout' => 5 // in seconds

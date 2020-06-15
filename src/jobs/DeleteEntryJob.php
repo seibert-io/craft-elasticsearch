@@ -6,7 +6,6 @@
 namespace seibertio\elasticsearch\jobs;
 
 use Craft;
-use craft\elements\Entry;
 use craft\queue\JobInterface;
 use Exception;
 use seibertio\elasticsearch\components\Index;
@@ -18,18 +17,12 @@ class DeleteEntryJob extends TrackableJob implements JobInterface
 	
 	public int $siteId;
 
-    public function getEntry(): Entry
-    {
-		return Entry::find()->id($this->entryId)->siteId($this->siteId)->one();
-    }
-
     public function execute($queue)
     {
-		$entry = $this->getEntry();
 		$index = $this->getIndex();
 		
 		try {
-			ElasticSearchPlugin::$plugin->index->deleteEntry($entry, $index);
+			ElasticSearchPlugin::$plugin->index->deleteDocumentById($index, $this->entryId);
 			$this->markCompleted();
 		} catch (Exception $e) {
 			// fire & forget. no need to react if index or entry document are already gone
@@ -47,7 +40,6 @@ class DeleteEntryJob extends TrackableJob implements JobInterface
 	}
 
 	public function getIndex(): Index {
-		$site = $this->getEntry()->site;
-		return ElasticSearchPlugin::$plugin->indexManagement->getSiteIndex($site);
+		return ElasticSearchPlugin::$plugin->indexManagement->getSiteIndex(Craft::$app->sites->getSiteById($this->siteId));
 	}
 }

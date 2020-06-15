@@ -16,10 +16,12 @@
 	],
 	"minimum-stability": "dev",
 	"require": {
-	  "craftcms/cms": "^3.0.0",
-	  "spicyweb/craft-neo": "^2.5",
-	  "elasticsearch/elasticsearch": "^7.4",
+		"elasticsearch/elasticsearch": "^7.4",
 		"guzzlehttp/guzzle": "^6.0"
+	},
+	"require-dev": {
+		"craftcms/cms": "^3.0.0",
+		"spicyweb/craft-neo": "^2.5"
 	},
 	"autoload": {
 	  "psr-4": {
