@@ -82,8 +82,13 @@ class IndexController extends Controller
         }
 
         $index = ElasticSearchPlugin::$plugin->indexManagement->getSiteIndex($entry->site);
-        ElasticSearchPlugin::$plugin->index->indexEntry($entry, $index);
 
+        $index->on(DocumentEvent::EVENT_BEFORE_INDEX, function(DocumentEvent $event) {
+            $this->stdout('Trying to index URL ' . $event->params['body']['url'] . '...' . PHP_EOL);
+        });
+
+        ElasticSearchPlugin::$plugin->index->indexEntry($entry, $index);
+        $this->stdout('OK' . PHP_EOL);
         return ExitCode::OK;
     }
 
