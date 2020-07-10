@@ -29,8 +29,6 @@ class EntryService extends Component
     {
         if (!ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexEntries()) return;
 
-        if (ElementHelper::isDraftOrRevision($entry)) return;
-
         $entries = [$entry];
 
         foreach ($entries as $entryToProcess) {
