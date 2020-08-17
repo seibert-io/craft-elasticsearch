@@ -6,6 +6,7 @@
 namespace seibertio\elasticsearch;
 
 use Craft;
+use craft\base\Plugin;
 use craft\console\Application as ConsoleApplication;
 use craft\elements\Entry;
 use craft\events\ElementStructureEvent;
@@ -15,8 +16,6 @@ use craft\events\RegisterUrlRulesEvent;
 use craft\helpers\ElementHelper;
 use craft\services\Utilities;
 use craft\web\UrlManager;
-use Exception;
-use seibertio\elasticsearch\components\EntryDocument;
 use seibertio\elasticsearch\jobs\TrackableJob;
 use seibertio\elasticsearch\models\Settings;
 use seibertio\elasticsearch\services\ClientService;
@@ -25,9 +24,9 @@ use seibertio\elasticsearch\services\EntryService;
 use seibertio\elasticsearch\services\IndexManagementService;
 use seibertio\elasticsearch\services\IndexService;
 use seibertio\elasticsearch\services\QueryService;
+use seibertio\elasticsearch\services\QueueService;
 use seibertio\elasticsearch\utilities\IndexUtility;
 use yii\base\Event;
-use yii\queue\ErrorEvent;
 use yii\queue\ExecEvent;
 use yii\queue\PushEvent;
 use yii\queue\Queue;
@@ -41,8 +40,9 @@ use yii\queue\Queue;
  * @property EntryService $entries
  * @property CrawlService $crawl
  * @property QueryService $query
+ * @property QueueService $queue
  */
-class ElasticSearchPlugin extends \craft\base\Plugin
+class ElasticSearchPlugin extends Plugin
 {
 	/**
 	 * @var ElasticSearchPlugin
@@ -108,7 +108,8 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 			'indexManagement' => IndexManagementService::class,
 			'entries' => EntryService::class,
 			'crawl' => CrawlService::class,
-			'query' => QueryService::class
+			'query' => QueryService::class,
+			'queue' => QueueService::class
 		]);
 	}
 
@@ -122,52 +123,56 @@ class ElasticSearchPlugin extends \craft\base\Plugin
 				$event->types[] = IndexUtility::class;
 			}
 		);
-		
+
 		Event::on(
 			Entry::class,
 			Entry::EVENT_AFTER_SAVE,
 			function (ModelEvent $event) {
 				if (!$event->sender) return;
 
-				/** @var Entry */
+				/** @var Entry $entry */
 				$entry = $event->sender;
 
-				$this->entries->handleEntryUpdate($entry);
+                if (ElementHelper::isDraftOrRevision($entry)) return;
+                if (!$entry->enabled) return;
+                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoIndexable($entry)) return;
+
+                ElasticSearchPlugin::$plugin->queue->indexEntry($entry);
 			}
 		);
-		
+
+        Event::on(
+            Entry::class,
+            Entry::EVENT_AFTER_MOVE_IN_STRUCTURE,
+            function (ElementStructureEvent $event) {
+                if (!$event->sender) return;
+
+                /** @var Entry $entry */
+                $entry = $event->sender;
+
+                if (ElementHelper::isDraftOrRevision($entry)) return;
+                if (!$entry->enabled) return;
+                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoIndexable($entry)) return;
+
+                ElasticSearchPlugin::$plugin->queue->indexEntry($entry);
+            }
+        );
+
 		Event::on(
 			Entry::class,
 			Entry::EVENT_AFTER_DELETE,
 			function (Event $event) {
 				if (!$event->sender) return;
-				
-				/** @var Entry */
+
+				/** @var Entry $entry */
 				$entry = $event->sender;
 
 				if (ElementHelper::isDraftOrRevision($entry)) return;
+                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoDeleteable($entry)) return;
 
-				$entry->enabled = false;
-				
-				$indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
-                if (sizeof($indexableSectionHandles) === 0 || in_array($entry->section->handle, $indexableSectionHandles)) {
-					try {
-						ElasticSearchPlugin::$plugin->index->deleteDocument(new EntryDocument($entry));
-					} catch (Exception $e) {
-						// ignore that document may not have been indexed
-					}
-                }
+                ElasticSearchPlugin::$plugin->queue->deleteEntry($entry);
 			}
 		);
-
-		Event::on(Entry::class, Entry::EVENT_AFTER_MOVE_IN_STRUCTURE, function (ElementStructureEvent $event) {
-			if (!$event->sender) return;
-
-				/** @var Entry */
-				$entry = $event->sender;
-
-				$this->entries->handleEntryUpdate($entry);
-        });
 
 		Event::on(Queue::class,Queue::EVENT_AFTER_PUSH, function (PushEvent $event) {
 			if ($event->job instanceof TrackableJob) {

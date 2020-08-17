@@ -16,11 +16,6 @@
  */
 return [
     /**
-     * Defines if entries and their ancestors should automatically be indexed upon save+delete
-     */
-    'autoIndexEntries' => true,
-
-    /**
      * Hosts the plugin may connect to.
      * (Uses function Syntax instead of a plain array as the config value is an array and the Craft ConfigHelper identifies such scenario
      * as a per-site config per default)
@@ -69,10 +64,16 @@ return [
     'languageAnalyzer' => '',
 
     /**
-     * Sections of which entries may be indexed
-     * Empty array = unrestricted
+     * Sections of which entries may be automatically indexed
      */
-    'indexableSectionHandles' => function (string $siteHandle) {
+    'autoIndexableSectionHandles' => function (string $siteHandle) {
+        return [];
+    },
+
+    /**
+     *Sections of which entries may be automatically deleted from index after entry deletion
+     */
+    'autoDeleteableSectionHandles' => function (string $siteHandle) {
         return [];
     },
 ];

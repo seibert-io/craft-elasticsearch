@@ -23,11 +23,11 @@ class Settings extends Model
 
     public $fetchBaseUrl;
 
-    public $autoIndexEntries;
-
     public $languageAnalyzer;
 
-    public $indexableSectionHandles;
+    public $autoIndexableSectionHandles;
+
+    public $autoDeleteableSectionHandles;
 
     public function getHosts($siteHandle = null): array
     {
@@ -49,10 +49,6 @@ class Settings extends Model
         return ConfigHelper::localizedValue($this->fetchBaseUrl, $siteHandle) ?? UrlHelper::baseSiteUrl();
     }
 
-    public function getAutoIndexEntries($siteHandle = null): bool
-    {
-        return (bool) ConfigHelper::localizedValue($this->autoIndexEntries, $siteHandle);
-    }
 
     public function getLanguageAnalyzer($siteHandle = null): string
     {
@@ -65,9 +61,14 @@ class Settings extends Model
     }
 
 
-    public function getIndexableSectionHandles($siteHandle = null): array
+    public function getAutoIndexableSectionHandles($siteHandle = null): array
     {
-        return ConfigHelper::localizedValue($this->indexableSectionHandles, $siteHandle);
+        return ConfigHelper::localizedValue($this->autoIndexableSectionHandles, $siteHandle);
+    }
+
+    public function getAutoDeleteableSectionHandles($siteHandle = null): array
+    {
+        return ConfigHelper::localizedValue($this->autoDeleteableSectionHandles, $siteHandle);
     }
 
     /**

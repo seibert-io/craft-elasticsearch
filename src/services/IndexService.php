@@ -8,11 +8,13 @@ namespace seibertio\elasticsearch\services;
 
 use craft\base\Component;
 use craft\elements\Entry;
+use Elasticsearch\Common\Exceptions\Missing404Exception;
 use seibertio\elasticsearch\components\Document;
 use seibertio\elasticsearch\components\EntryDocument;
 use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\events\DocumentEvent;
+use stdClass;
 
 /**
  * Index Service
@@ -28,7 +30,7 @@ class IndexService extends Component
     /**
      * @param Entry $entry
      * @param Index|null $index if not provided, the default index will be used
-     * @return Document|false falseif cancelled
+     * @return Document|false false if cancelled
      */
     public function indexEntry(Entry $entry, $index = null)
     {
@@ -85,6 +87,11 @@ class IndexService extends Component
         return $this->deleteDocument($document);
     }
 
+    /**
+     * @param Document $document
+     * @throws Missing404Exception
+     * @return bool
+     */
     public function deleteDocument(Document $document): bool
     {
         $event = new DocumentEvent();
@@ -125,7 +132,7 @@ class IndexService extends Component
             'scroll' => "20s",
             '_source_includes' => ['id'],
             'stored_fields' => [],
-            'body' => ['query' => ['match_all' => new \stdClass()]],
+            'body' => ['query' => ['match_all' => new stdClass()]],
             'client' => [
                 'timeout' => 5, // in seconds
                 'connect_timeout' => 5 // in seconds

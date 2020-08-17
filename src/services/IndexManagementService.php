@@ -9,6 +9,7 @@ use Craft;
 use craft\base\Component;
 use craft\models\Site;
 use Elasticsearch\Common\Exceptions\BadRequest400Exception;
+use Elasticsearch\Common\Exceptions\Missing404Exception;
 use seibertio\elasticsearch\components\Index;
 use seibertio\elasticsearch\ElasticSearchPlugin;
 use seibertio\elasticsearch\events\IndexEvent;
@@ -67,6 +68,10 @@ class IndexManagementService extends Component
         return $response['count'];
     }
 
+    /**
+     * @param Index $index
+     * @throws Missing404Exception
+     */
     public function deleteIndex(Index $index): void
     {
         $params = [
