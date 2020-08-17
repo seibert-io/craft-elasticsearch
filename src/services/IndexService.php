@@ -80,6 +80,7 @@ class IndexService extends Component
     /**
      * @param Entry $entry
      * @param Index|null $index if not provided, the default index will be used
+     * @throws Missing404Exception
      */
     public function deleteEntry(Entry $entry, $index = null): bool
     {

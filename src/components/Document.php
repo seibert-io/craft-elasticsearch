@@ -5,8 +5,8 @@
 namespace seibertio\elasticsearch\components;
 
 use Craft;
+use Exception;
 use seibertio\elasticsearch\ElasticSearchPlugin;
-use seibertio\elasticsearch\events\DocumentEvent;
 use seibertio\elasticsearch\exceptions\MarkupExtractionException;
 use yii\base\Component;
 
@@ -53,6 +53,7 @@ class Document extends Component
 
 	public function __construct(string $id, Index $index)
 	{
+	    parent::__construct([]);
 		$this->id = $id;
 		$this->index = $index;
 		$this->processDocumentCallback = [ElasticSearchPlugin::$plugin->crawl, 'extractIndexableMarkup'];
@@ -70,7 +71,7 @@ class Document extends Component
 		if (!array_key_exists($key, $this->properties)) {
 			$message = 'Trying to access unregistered attribute \"' . $key . '\"';
 			Craft::error($message, 'elasticsearch');
-			throw new \Exception($message);
+			throw new Exception($message);
 		}
 
 		return $this->properties[$key];
@@ -80,17 +81,23 @@ class Document extends Component
     {
 		// force registration of all custom properties during init event
 		if (!array_key_exists($key, $this->properties)) {
-			throw new \Exception('Trying to set unregistered attribute \"' . $key . '\"');
+			throw new Exception('Trying to set unregistered attribute \"' . $key . '\"');
 		}
 		
 		$this->properties[$key] = $value;
 	}
 
+    /**
+     * @param $html
+     * @return string
+     * @throws Exception
+     * @throws MarkupExtractionException
+     */
 	public function extractIndexableContent($html): string {
 		if (!is_callable($this->processDocumentCallback)) {
 			$message = '$processDocumentCallback is not callable';
 			Craft::error($message, 'elasticsearch');
-			throw new \Exception($message);
+			throw new Exception($message);
 		}
 		return call_user_func($this->processDocumentCallback, $html);
 	}
