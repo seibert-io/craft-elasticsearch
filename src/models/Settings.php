@@ -25,9 +25,9 @@ class Settings extends Model
 
     public $languageAnalyzer;
 
-    public $autoIndexableSectionHandles;
+    public $indexableSectionHandles;
 
-    public $autoDeleteableSectionHandles;
+    public $sectionHandlesUpdatableOnSave;
 
     public function getHosts($siteHandle = null): array
     {
@@ -61,14 +61,14 @@ class Settings extends Model
     }
 
 
-    public function getAutoIndexableSectionHandles($siteHandle = null): array
+    public function getIndexableSectionHandles($siteHandle = null): array
     {
-        return ConfigHelper::localizedValue($this->autoIndexableSectionHandles, $siteHandle);
+        return ConfigHelper::localizedValue($this->indexableSectionHandles, $siteHandle);
     }
 
-    public function getAutoDeleteableSectionHandles($siteHandle = null): array
+    public function getSectionHandlesUpdatableOnSave($siteHandle = null): array
     {
-        return ConfigHelper::localizedValue($this->autoDeleteableSectionHandles, $siteHandle);
+        return ConfigHelper::localizedValue($this->sectionHandlesUpdatableOnSave, $siteHandle);
     }
 
     /**

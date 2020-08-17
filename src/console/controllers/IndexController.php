@@ -128,7 +128,7 @@ class IndexController extends Controller
         $existingDocumentIds = ElasticSearchPlugin::$plugin->index->getDocumentIDs($index);
 
         $startIndexSite = microtime(true);
-        $autoIndexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexableSectionHandles();
+        $autoIndexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
         $entryQuery = Entry::find()->site($site)->drafts(false)->revisions(false);
         $entryQuery->section($autoIndexableSectionHandles);

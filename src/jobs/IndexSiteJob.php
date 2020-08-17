@@ -35,11 +35,11 @@ class IndexSiteJob extends TrackableJob implements JobInterface, RetryableJobInt
     {
         $site = $this->getSite();
 
-        $autoIndexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexableSectionHandles();
+        $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
         $entryQuery = Entry::find()->site($site)->drafts(false)->revisions(false);
-        if (sizeof($autoIndexableSectionHandles) > 0) {
-            $entryQuery->section($autoIndexableSectionHandles);
+        if (!in_array('*', $indexableSectionHandles)) {
+            $entryQuery->section($indexableSectionHandles);
         }
 
         /** @var Entry[] */

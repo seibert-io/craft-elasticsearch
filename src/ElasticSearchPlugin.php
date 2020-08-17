@@ -135,7 +135,7 @@ class ElasticSearchPlugin extends Plugin
 
                 if (ElementHelper::isDraftOrRevision($entry)) return;
                 if (!$entry->enabled) return;
-                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoIndexable($entry)) return;
+                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoUpdatableOnSave($entry)) return;
 
                 ElasticSearchPlugin::$plugin->queue->indexEntry($entry);
 			}
@@ -152,7 +152,7 @@ class ElasticSearchPlugin extends Plugin
 
                 if (ElementHelper::isDraftOrRevision($entry)) return;
                 if (!$entry->enabled) return;
-                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoIndexable($entry)) return;
+                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoUpdatableOnSave($entry)) return;
 
                 ElasticSearchPlugin::$plugin->queue->indexEntry($entry);
             }
@@ -168,7 +168,7 @@ class ElasticSearchPlugin extends Plugin
 				$entry = $event->sender;
 
 				if (ElementHelper::isDraftOrRevision($entry)) return;
-                if (!ElasticSearchPlugin::$plugin->entries->isEntryAutoDeleteable($entry)) return;
+                if (!ElasticSearchPlugin::$plugin->entries->isEntryIndexable($entry)) return;
 
                 ElasticSearchPlugin::$plugin->queue->deleteEntry($entry);
 			}

@@ -21,13 +21,13 @@ use seibertio\elasticsearch\ElasticSearchPlugin;
  */
 class EntryService extends Component
 {
-    public function isEntryAutoIndexable(Entry $entry): bool {
-        $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexableSectionHandles();
-        return in_array($entry->section->handle, $indexableSectionHandles);
+    public function isEntryIndexable(Entry $entry): bool {
+        $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
+        return in_array($entry->section->handle, $indexableSectionHandles) || in_array('*', $indexableSectionHandles);
     }
 
-    public function isEntryAutoDeleteable(Entry $entry): bool {
-        $deleteableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getAutoDeleteableSectionHandles();
-        return in_array($entry->section->handle, $deleteableSectionHandles);
+    public function isEntryAutoUpdatableOnSave(Entry $entry): bool {
+        $sectionHandlesUpdateableOnSave = ElasticSearchPlugin::$plugin->getSettings()->getSectionHandlesUpdatableOnSave();
+        return in_array($entry->section->handle, $sectionHandlesUpdateableOnSave) || in_array('*', $sectionHandlesUpdateableOnSave);
     }
 }

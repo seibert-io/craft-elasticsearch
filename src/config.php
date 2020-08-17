@@ -64,16 +64,16 @@ return [
     'languageAnalyzer' => '',
 
     /**
-     * Sections of which entries may be automatically indexed
+     * Sections of which entries may be indexed
      */
-    'autoIndexableSectionHandles' => function (string $siteHandle) {
-        return [];
+    'indexableSectionHandles' => function (string $siteHandle) {
+        return ['*'];
     },
 
     /**
-     *Sections of which entries may be automatically deleted from index after entry deletion
+     * Sections of which entries may be automatically updated on entry save
      */
-    'autoDeleteableSectionHandles' => function (string $siteHandle) {
-        return [];
+    'sectionHandlesUpdatableOnSave' => function (string $siteHandle) {
+        return ['*'];
     },
 ];

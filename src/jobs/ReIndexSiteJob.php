@@ -43,10 +43,12 @@ class ReIndexSiteJob extends TrackableJob implements JobInterface, RetryableJobI
 
 		ElasticSearchPlugin::$plugin->indexManagement->createIndex($index);
 
-        $autoIndexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getAutoIndexableSectionHandles();
+        $indexableSectionHandles = ElasticSearchPlugin::$plugin->getSettings()->getIndexableSectionHandles();
 
         $entryQuery = Entry::find()->site($site)->drafts(false)->revisions(false);
-        $entryQuery->section($autoIndexableSectionHandles);
+        if (!in_array('*', $indexableSectionHandles)) {
+            $entryQuery->section($indexableSectionHandles);
+        }
 
 		/** @var Entry[] */
 		$entriesToIndex = array_filter($entryQuery->all(), fn(Entry $entry) => $entry->enabled && !ElementHelper::isDraftOrRevision($entry));
