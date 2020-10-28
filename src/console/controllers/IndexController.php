@@ -103,17 +103,41 @@ class IndexController extends Controller
         $this->indexSite($site);
         return ExitCode::OK;
     }
+
+    public function actionReindexSiteSync($site) {
+        $site = Craft::$app->sites->getSiteByHandle($site) ?: Craft::$app->sites->getSiteById($site);
+
+        if (!$site) {
+            $this->stderr('Site not found.' . PHP_EOL);
+            return ExitCode::IOERR;
+        }
+
+        $this->indexSite($site, true);
+        return ExitCode::OK;
+    }
     // Private Methods
     // =========================================================================
     /**
      * @param Site $site
      */
-    private function indexSite(Site $site): void
+    private function indexSite(Site $site, $reCreate = false): void
     {
         $this->stdout('Indexing site ' . $site->handle . '...' . PHP_EOL, Console::FG_GREY);
         /** @var Site $site */
 
         $index = Index::getInstance($site);
+
+        if ($reCreate) {
+            $this->stdout('Recreating index...' . PHP_EOL);
+            try {
+                ElasticSearchPlugin::$plugin->indexManagement->deleteIndex($index);
+                ElasticSearchPlugin::$plugin->indexManagement->createIndex($index);
+            } catch (Missing404Exception $e) {
+                // not an error - the index simply does not exist yet
+            }
+
+        }
+
 
         $index->on(DocumentEvent::EVENT_BEFORE_INDEX, function(DocumentEvent $event) {
             $this->stdout('Trying to index URL ' . $event->params['body']['url'] . '...' . PHP_EOL);
@@ -122,7 +146,14 @@ class IndexController extends Controller
         try {
             ElasticSearchPlugin::$plugin->indexManagement->createIndex($index);
         } catch (Exception $e) {
-            // index already exists
+            try {
+                // index may just already exist. try to get document ids. if this throws an error, something went wrong during index creating
+                // and we should throw an exception
+                ElasticSearchPlugin::$plugin->index->getDocumentIDs($index);
+            } catch (Exception $nestedException) {
+                throw $e;
+            }
+
         }
 
         $existingDocumentIds = ElasticSearchPlugin::$plugin->index->getDocumentIDs($index);
