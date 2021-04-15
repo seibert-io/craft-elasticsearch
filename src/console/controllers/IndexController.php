@@ -176,17 +176,21 @@ class IndexController extends Controller
 
         foreach ($entriesToIndex as $entry) {
             $startIndexEntry = microtime(true);
-            $documentIndexed = ElasticSearchPlugin::$plugin->index->indexEntry($entry);
-            $endIndexEntry = microtime(true);
-            $durationIndexEntry = $endIndexEntry - $startIndexEntry;
-            $entriesProcessed++;
+            try {
+                $documentIndexed = ElasticSearchPlugin::$plugin->index->indexEntry($entry);
+                $endIndexEntry = microtime(true);
+                $durationIndexEntry = $endIndexEntry - $startIndexEntry;
+                $entriesProcessed++;
 
-            $color = $documentIndexed !== false ? Console::FG_GREEN : Console::FG_YELLOW;
+                $color = $documentIndexed !== false ? Console::FG_GREEN : Console::FG_YELLOW;
 
-            if ($documentIndexed !== false)
-                $indexedDocumentIds[] = $documentIndexed->getId();
+                if ($documentIndexed !== false)
+                    $indexedDocumentIds[] = $documentIndexed->getId();
 
-            $this->stdout($entriesProcessed . '/' . $entriesTotal . ' - ' . (round($durationIndexEntry * 100) / 100) . 's (' . round(($entriesProcessed / $entriesTotal) * 100) . '%)' . PHP_EOL, $color);
+                $this->stdout($entriesProcessed . '/' . $entriesTotal . ' - ' . (round($durationIndexEntry * 100) / 100) . 's (' . round(($entriesProcessed / $entriesTotal) * 100) . '%)' . PHP_EOL, $color);
+            } catch (Exception $error) {
+                $this->stdout($entriesProcessed . '/' . $entriesTotal . ' - Indexing failed: "' . $error->getMessage() . '" (' . round(($entriesProcessed / $entriesTotal) * 100) . '%)' . PHP_EOL, Console::FG_RED);
+            }
         }
 
         $removableDocumentIds = array_diff($existingDocumentIds, $indexedDocumentIds);
