@@ -67,6 +67,10 @@ class Document extends Component
 		return $this->index;
 	}
 
+    public function __isset($key) {
+        return array_key_exists($key, $this->properties);
+    }
+
 	public function __get($key) {
 		if (!array_key_exists($key, $this->properties)) {
 			$message = 'Trying to access unregistered attribute \"' . $key . '\"';
